@@ -1,63 +1,11 @@
 import { getDefaultBackgroundVideo } from './defaultBackground';
-import type { AppSettings, AssetItem, PresenceProfile, Theme } from './types';
+import type { AppSettings, Theme } from './types';
 
-const now = new Date().toISOString();
-
-export const sampleProfiles: PresenceProfile[] = [
-  {
-    id: 'focus-deep-work',
-    name: 'Deep Work',
-    favorite: true,
-    details: 'Designing the next release',
-    state: 'Heads down in the editor',
-    applicationId: '114455667788990011',
-    activityType: 'Playing',
-    instance: false,
-    status: 'live',
-    buttonsEnabled: true,
-    buttons: [
-      { id: '1', label: '', url: '' },
-      { id: '2', label: '', url: '' }
-    ],
-    assets: { largeImage: '', largeText: '', largeUrl: '', smallImage: '', smallText: '', smallUrl: '' },
-    timestamps: { start: now },
-    party: { id: 'solo-session', currentSize: 1, maxSize: 4 },
-    secrets: { join: '', spectate: '', match: '' },
-    notes: 'Main profile for focused work sessions.',
-    updatedAt: now
-  },
-  {
-    id: 'launch-mode',
-    name: 'Launch Mode',
-    favorite: false,
-    details: 'Shipping MY PRESENCE',
-    state: 'Polishing premium interactions',
-    applicationId: '998877665544332211',
-    activityType: 'Competing',
-    instance: true,
-    status: 'idle',
-    buttonsEnabled: true,
-    buttons: [
-      { id: '3', label: '', url: '' },
-      { id: '4', label: '', url: '' }
-    ],
-    assets: { largeImage: '', largeText: '', largeUrl: '', smallImage: '', smallText: '', smallUrl: '' },
-    timestamps: { start: now, end: new Date(Date.now() + 3600000).toISOString() },
-    party: { id: 'launch-room', currentSize: 3, maxSize: 8 },
-    secrets: { join: 'join-secret', spectate: '', match: 'match-secret' },
-    notes: 'Use during product launches and live demos.',
-    updatedAt: now
-  }
-];
-
-export const sampleAssets: AssetItem[] = [
-  { id: 'a1', name: 'studio-night', kind: 'large', accent: '#7C3AED', updatedAt: now },
-  { id: 'a2', name: 'spark-wave', kind: 'small', accent: '#06B6D4', updatedAt: now },
-  { id: 'a3', name: 'launch-grid', kind: 'large', accent: '#F97316', updatedAt: now },
-  { id: 'a4', name: 'pulse-ring', kind: 'small', accent: '#10B981', updatedAt: now },
-  { id: 'a5', name: 'soft-moon', kind: 'library', accent: '#EC4899', updatedAt: now }
-];
-
+// No seeded profiles or assets ship with the app. The library used to fall back
+// to two fabricated presets ("Deep Work", "Launch Mode") and five fake assets on
+// a fresh install, so the first thing every new user saw was content they had
+// not made and could not explain. A fresh install now starts genuinely empty and
+// the empty states point at creating your own profile.
 export const defaultThemes: Theme[] = [
   {
     id: 'theme-dark-default',
@@ -169,7 +117,16 @@ export const defaultThemes: Theme[] = [
   }
 ];
 
+// Ids of the fabricated content that older builds seeded into the library on a
+// fresh install. Anyone who ran the app before has those rows sitting in
+// localStorage, so removing the constants alone would not empty anyone's library
+// — they get pruned once, on load. Anything the user created or renamed keeps
+// its own generated id and is untouched.
+export const SEED_PROFILE_IDS = ['focus-deep-work', 'launch-mode'] as const;
+export const SEED_ASSET_IDS = ['a1', 'a2', 'a3', 'a4', 'a5'] as const;
+
 export const defaultSettings: AppSettings = {
+  sidebarCollapsed: false,
   appearance: 'dark',
   launchOnStartup: false,
   startMinimized: false,

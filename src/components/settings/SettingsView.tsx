@@ -1,5 +1,6 @@
-import { Bell, Cpu, Database, Gauge, MonitorCog, MoonStar, RefreshCcw, Shield, Videotape, Wifi, Zap, MessageCircle, Globe, Github } from 'lucide-react';
+import { Bell, Gauge, MonitorCog, MoonStar, RefreshCcw, Shield, Sparkles, Wifi, MessageCircle, Github } from 'lucide-react';
 import { useAppStore } from '../../lib/store';
+import { discordPresenceService } from '../../services/discordPresence';
 import { SegmentedControl, SwitchField } from '../ui/forms';
 
 export function SettingsView() {
@@ -30,18 +31,24 @@ export function SettingsView() {
       <SettingCard title="Discord" icon={Wifi} description="Connection and presence behavior.">
         <SwitchField label="Auto reconnect" description="Reconnect if Discord disconnects" checked={settings.autoReconnect} onChange={(v) => updateSettings((s) => ({ ...s, autoReconnect: v }))} />
         <div style={{ marginTop: 4 }}>
-          <button className="ui-button ui-button--outline" onClick={() => { const s = useAppStore.getState(); const p = s.profiles.find(p => p.id === s.selectedProfileId); if (p) import('../../services/discordPresence').then(m => m.discordPresenceService.start(p).catch(() => {})); }} style={{ width: '100%' }}>
+          <button className="ui-button ui-button--outline" onClick={() => { const s = useAppStore.getState(); const p = s.profiles.find(p => p.id === s.selectedProfileId); if (p) void discordPresenceService.start(p); }} style={{ width: '100%' }}>
             <RefreshCcw size={12} /> Reconnect Discord
           </button>
         </div>
       </SettingCard>
 
       <SettingCard title="Startup" icon={MonitorCog} description="Behavior when Windows starts.">
-        <SwitchField label="Launch at Windows startup" description="Open automatically when you log in" checked={settings.launchOnStartup} onChange={(v) => { updateSettings((s) => ({ ...s, launchOnStartup: v })); void window.myPresenceDesktop?.setLaunchOnStartup?.(v); }} />
+        <SwitchField label="Launch at Windows startup" description="Open automatically when you log in" checked={settings.launchOnStartup} onChange={(v) => { updateSettings((s) => ({ ...s, launchOnStartup: v })); void window.myPresenceDesktop?.setLaunchOnStartup?.(v).catch(() => {}); }} />
         <SwitchField label="Start minimized" description="Launch to system tray without showing window" checked={settings.startMinimized} onChange={(v) => updateSettings((s) => ({ ...s, startMinimized: v }))} />
         <SwitchField label="Minimize to tray" description="Keep running in the system tray when minimized" checked={settings.minimizeToTray} onChange={(v) => updateSettings((s) => ({ ...s, minimizeToTray: v }))} />
         <SwitchField label="Close to tray" description="Keep running in the system tray when closing window" checked={settings.closeToTray} onChange={(v) => updateSettings((s) => ({ ...s, closeToTray: v }))} />
         <SwitchField label="Restore previous session" description="Re-open profiles from last session" checked={settings.restorePreviousSession} onChange={(v) => updateSettings((s) => ({ ...s, restorePreviousSession: v }))} />
+      </SettingCard>
+
+      <SettingCard title="Getting started" icon={Sparkles} description="Replay the setup walkthrough at any time.">
+        <button className="ui-button ui-button--outline" onClick={() => useAppStore.getState().setOnboardingOpen(true)} style={{ width: '100%', justifyContent: 'center' }}>
+          <Sparkles size={14} /> Run the welcome tour again
+        </button>
       </SettingCard>
 
       <SettingCard title="Performance" icon={Gauge} description="Optimize resource usage.">
@@ -62,7 +69,7 @@ export function SettingsView() {
 
       <SettingCard title="Advanced" icon={Shield} description="Developer and power user options.">
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
-          My Presence v1.0.0
+          My Presence v{__APP_VERSION__}
           <br />
           Electron + React + TypeScript
         </div>

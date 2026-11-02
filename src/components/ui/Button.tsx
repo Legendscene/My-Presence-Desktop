@@ -1,42 +1,9 @@
 import { Loader2 } from 'lucide-react';
 import clsx from 'clsx';
-import { forwardRef, useCallback, useRef, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
+import { forwardRef, useCallback, useRef, type ButtonHTMLAttributes, type MouseEvent, type MutableRefObject, type ReactNode } from 'react';
+import { buttonClassName, type ButtonClassOptions } from './buttonStyles';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'success' | 'danger' | 'ghost' | 'outline' | 'text';
-export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon' | 'fab';
-
-type ButtonClassOptions = {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  active?: boolean;
-  loading?: boolean;
-  iconOnly?: boolean;
-  fullWidth?: boolean;
-  className?: string;
-};
-
-export function buttonClassName({
-  variant = 'secondary',
-  size = 'md',
-  active = false,
-  loading = false,
-  iconOnly = false,
-  fullWidth = false,
-  className
-}: ButtonClassOptions = {}) {
-  return clsx(
-    'ui-button',
-    `ui-button--${variant}`,
-    `ui-button--${size}`,
-    {
-      'is-active': active,
-      'is-loading': loading,
-      'is-icon-only': iconOnly || size === 'icon' || size === 'fab',
-      'is-full-width': fullWidth
-    },
-    className
-  );
-}
+export type { ButtonSize, ButtonVariant } from './buttonStyles';
 
 type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> &
   ButtonClassOptions & {
@@ -59,32 +26,37 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     children,
     disabled,
     type = 'button',
+    onClick,
     ...props
   },
   ref
 ) {
   const resolvedDisabled = disabled || loading;
-  const btnRef = useRef<HTMLButtonElement>(null);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
   const combinedRef = useCallback((node: HTMLButtonElement | null) => {
-    (btnRef as React.MutableRefObject<HTMLButtonElement | null>).current = node;
+    btnRef.current = node;
     if (typeof ref === 'function') ref(node);
-    else if (ref) ref.current = node;
+    else if (ref) (ref as MutableRefObject<HTMLButtonElement | null>).current = node;
   }, [ref]);
 
   const handleClick = useCallback((e: MouseEvent<HTMLButtonElement>) => {
+    onClick?.(e);
+    // Ripple is decoration only — never swallow the user's handler, and skip it
+    // when the button is disabled or the visitor asked for reduced motion.
+    if (e.defaultPrevented || resolvedDisabled) return;
     const btn = btnRef.current;
-    if (!btn || resolvedDisabled) return;
+    if (!btn || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
     const ripple = document.createElement('span');
     ripple.className = 'ripple';
     const rect = btn.getBoundingClientRect();
-    const size = Math.max(rect.width, rect.height);
-    ripple.style.width = ripple.style.height = `${size}px`;
-    ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
-    ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+    const diameter = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = `${diameter}px`;
+    ripple.style.left = `${e.clientX - rect.left - diameter / 2}px`;
+    ripple.style.top = `${e.clientY - rect.top - diameter / 2}px`;
     btn.appendChild(ripple);
     ripple.addEventListener('animationend', () => ripple.remove());
-    props.onClick?.(e);
-  }, [resolvedDisabled, props.onClick]);
+  }, [resolvedDisabled, onClick]);
 
   return (
     <button
@@ -109,4 +81,4 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       {loading ? <Loader2 className="ui-button__spinner" size={16} aria-hidden="true" /> : null}
     </button>
   );
-});
+});

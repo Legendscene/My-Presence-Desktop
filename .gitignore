@@ -1,4 +1,8 @@
 node_modules
 dist
 dist-electron
-release
+# electron-builder output. Matched as `release*` rather than `release` alone:
+# packaging can be pointed at a sibling directory (`release-out`, `release-test`)
+# when the default path is blocked, and none of those belong in git.
+release*
+*.tsbuildinfo

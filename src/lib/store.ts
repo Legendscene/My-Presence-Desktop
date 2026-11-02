@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { getDefaultBackgroundVideo } from './defaultBackground';
-import { defaultSettings, defaultThemes, sampleAssets, sampleProfiles } from './seed';
+import { defaultSettings, defaultThemes, SEED_ASSET_IDS, SEED_PROFILE_IDS } from './seed';
 import { persistence } from '../services/persistence';
 import { effectiveTimestampMode } from './timestamps';
 import type { AppSettings, AssetItem, ConnectionStatus, PresenceProfile, Theme } from './types';
@@ -23,10 +23,13 @@ type StoreState = {
   createProfile: () => void;
   duplicateProfile: (profileId: string) => void;
   deleteProfile: (profileId: string) => void;
+  addAsset: (asset: Omit<AssetItem, 'id' | 'updatedAt'>) => void;
+  deleteAsset: (assetId: string) => void;
   toggleFavorite: (profileId: string) => void;
   setSearch: (value: string) => void;
   setActiveTab: (tab: TabKey) => void;
   setConnectionStatus: (status: ConnectionStatus, message: string) => void;
+  setProfileStatus: (profileId: string, status: PresenceProfile['status']) => void;
   updateSettings: (updater: (settings: AppSettings) => AppSettings) => void;
   createTheme: () => void;
   duplicateTheme: (themeId: string) => void;
@@ -39,6 +42,8 @@ type StoreState = {
   setOnboardingOpen: (open: boolean) => void;
   completeOnboarding: () => void;
   resetDefaultTheme: () => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
 };
 
 export function useActiveTheme(): Theme | undefined {
@@ -65,6 +70,12 @@ const sanitizeProfileImages = (profiles: PresenceProfile[]): PresenceProfile[] =
     };
     return {
       ...profile,
+      // 'live' is a runtime fact, not saved state: a profile that was live when
+      // the app last closed is NOT connected now. Reconnect is driven by
+      // persistence.loadLiveState() instead, so restoring 'live' here would show
+      // a green badge and a "Live – Click to Stop" button for a presence Discord
+      // has never received.
+      status: 'idle' as const,
       buttonsEnabled: profile.buttonsEnabled ?? true,
       buttons,
       timestamps,
@@ -76,9 +87,25 @@ const sanitizeProfileImages = (profiles: PresenceProfile[]): PresenceProfile[] =
     };
   });
 
+// Older builds seeded two fabricated profiles and five fake assets into an
+// empty library. They are pruned once here so an existing install ends up with
+// only what the user actually made; the ids below are the only ones those rows
+// could ever have had.
+const seedProfileIds = new Set<string>(SEED_PROFILE_IDS);
+const seedAssetIds = new Set<string>(SEED_ASSET_IDS);
+
+const pruneSeedData = <T extends { id: string }>(rows: T[], seedIds: Set<string>): T[] =>
+  rows.filter((row) => !seedIds.has(row.id));
+
 const loadedProfiles = persistence.loadProfiles();
-const storedProfiles = sanitizeProfileImages(loadedProfiles?.length ? loadedProfiles : sampleProfiles);
-const storedAssets = persistence.loadAssets() ?? sampleAssets;
+const loadedAssets = persistence.loadAssets();
+const storedProfiles = sanitizeProfileImages(pruneSeedData(loadedProfiles ?? [], seedProfileIds));
+const storedAssets = pruneSeedData(loadedAssets ?? [], seedAssetIds);
+
+// Persist the prune immediately so the removed rows do not come back on the
+// next load if nothing else writes profiles/assets in this session.
+if ((loadedProfiles?.length ?? 0) !== storedProfiles.length) persistence.saveProfiles(storedProfiles);
+if ((loadedAssets?.length ?? 0) !== storedAssets.length) persistence.saveAssets(storedAssets);
 const storedSettings = persistence.loadSettings() ?? defaultSettings;
 const storedThemes = persistence.loadThemes() ?? defaultThemes;
 
@@ -87,6 +114,17 @@ const persistState = (partial: Partial<StoreState>) => {
   if (partial.assets) persistence.saveAssets(partial.assets);
   if (partial.settings) persistence.saveSettings(partial.settings);
   if (partial.themes) persistence.saveThemes(partial.themes);
+};
+
+// Startup flags the main process reads from userData before any window exists.
+// Kept in one place so the store and the bridge can never disagree about which
+// settings matter.
+const STARTUP_KEYS = ['startMinimized', 'closeToTray', 'minimizeToTray', 'launchOnStartup'] as const;
+
+const syncStartupState = (settings: AppSettings) => {
+  const patch: Partial<Record<(typeof STARTUP_KEYS)[number], boolean>> = {};
+  for (const key of STARTUP_KEYS) patch[key] = Boolean(settings[key]);
+  void window.myPresenceDesktop?.setStartupState?.(patch).catch(() => {});
 };
 
 const createBlankProfile = (): PresenceProfile => {
@@ -177,7 +215,24 @@ export const useAppStore = create<StoreState>((set, get) => ({
     set((state) => {
       const profiles = state.profiles.filter((p) => p.id !== profileId);
       persistState({ profiles });
-      return { profiles, selectedProfileId: profiles[0]?.id ?? '', activeTab: profiles.length ? state.activeTab : 'editor' as TabKey };
+      return { profiles, selectedProfileId: profiles[0]?.id ?? '' };
+    }),
+  addAsset: (asset) =>
+    set((state) => {
+      const nextAsset: AssetItem = {
+        ...asset,
+        id: `asset-${crypto.randomUUID()}`,
+        updatedAt: new Date().toISOString()
+      };
+      const assets = [nextAsset, ...state.assets];
+      persistState({ assets });
+      return { assets };
+    }),
+  deleteAsset: (assetId) =>
+    set((state) => {
+      const assets = state.assets.filter((asset) => asset.id !== assetId);
+      persistState({ assets });
+      return { assets };
     }),
   toggleFavorite: (profileId) =>
     set((state) => {
@@ -190,10 +245,19 @@ export const useAppStore = create<StoreState>((set, get) => ({
   setSearch: (search) => set({ search }),
   setActiveTab: (activeTab) => set({ activeTab }),
   setConnectionStatus: (connectionStatus, statusMessage) => set({ connectionStatus, statusMessage }),
+  setProfileStatus: (profileId, status) =>
+    set((state) => {
+      const target = state.profiles.find((p) => p.id === profileId);
+      if (!target || target.status === status) return state;
+      const profiles = state.profiles.map((p) => (p.id === profileId ? { ...p, status } : p));
+      persistState({ profiles });
+      return { profiles };
+    }),
   updateSettings: (updater) =>
     set((state) => {
       const settings = updater(state.settings);
       persistState({ settings });
+      syncStartupState(settings);
       return { settings };
     }),
 
@@ -311,11 +375,26 @@ export const useAppStore = create<StoreState>((set, get) => ({
       return true;
     } catch { return false; }
   },
+  setSidebarCollapsed: (sidebarCollapsed) =>
+    set((state) => {
+      const settings = { ...state.settings, sidebarCollapsed };
+      persistState({ settings });
+      return { settings };
+    }),
+  toggleSidebar: () => {
+    const next = !(get().settings.sidebarCollapsed ?? false);
+    get().setSidebarCollapsed(next);
+  },
+
   setOnboardingOpen: (open) => set({ onboardingOpen: open }),
   completeOnboarding: () =>
     set((state) => {
       const settings = { ...state.settings, onboardingComplete: true };
-      persistState({ settings });
+      // Written through immediately. On the debounced path a user who finished
+      // the wizard and then quit the app within the debounce window lost the
+      // flag and were shown the whole wizard again on the next launch.
+      persistence.saveSettingsNow(settings);
+      syncStartupState(settings);
       return { settings, onboardingOpen: false };
     })
 }));

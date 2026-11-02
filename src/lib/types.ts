@@ -81,6 +81,7 @@ export type AssetItem = {
   kind: 'large' | 'small' | 'library';
   accent: string;
   updatedAt: string;
+  url?: string;
 };
 
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'error';
@@ -141,4 +142,7 @@ export type AppSettings = {
   activeThemeId: string | null;
   backgroundSource: string;
   onboardingComplete: boolean;
+  // Whether the left library panel is collapsed to zero width. Persisted so the
+  // panel stays hidden across restarts the way a docked sidebar does elsewhere.
+  sidebarCollapsed?: boolean;
 };

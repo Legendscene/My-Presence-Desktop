@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, CopyPlus, Image, Paintbrush, Play, Search, Settings2, Square, Trash2, Upload, Wifi, WifiOff } from 'lucide-react';
+import { Activity, CopyPlus, Image, Paintbrush, Play, Search, Settings2, Trash2, Wifi, WifiOff } from 'lucide-react';
 
 interface Command {
   id: string;
@@ -19,11 +19,10 @@ const commands: Command[] = [
   { id: 'editor', label: 'Open Studio', icon: Activity, description: 'Edit presence details', action: 'switch-editor', group: 'Navigate' },
   { id: 'assets', label: 'Open Assets', icon: Image, description: 'Manage image library', action: 'switch-assets', group: 'Navigate' },
   { id: 'settings', label: 'Open Settings', icon: Settings2, description: 'App preferences', action: 'switch-settings', group: 'Navigate' },
-  { id: 'background', label: 'Open Background', icon: Paintbrush, description: 'Customize background', action: 'switch-background', group: 'Navigate' },
+  { id: 'nav-background', label: 'Open Background', icon: Paintbrush, description: 'Customize background', action: 'switch-background', group: 'Navigate' },
   { id: 'toggle', label: 'Toggle Presence', icon: Play, description: 'Start or stop live presence', action: 'toggle-presence', group: 'Actions' },
   { id: 'connect', label: 'Connect Discord', icon: Wifi, action: 'connect-discord', group: 'Actions' },
   { id: 'disconnect', label: 'Disconnect Discord', icon: WifiOff, action: 'disconnect-discord', group: 'Actions' },
-  { id: 'background', label: 'Open Background', icon: Paintbrush, action: 'toggle-background', group: 'Actions' },
 ];
 
 interface Props {
@@ -53,7 +52,8 @@ export function CommandPalette({ open, onClose, onAction }: Props) {
     if (open) {
       setQuery('');
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 30);
+      const timer = setTimeout(() => inputRef.current?.focus(), 30);
+      return () => clearTimeout(timer);
     }
   }, [open]);
 
@@ -71,7 +71,7 @@ export function CommandPalette({ open, onClose, onAction }: Props) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, [open, filtered, selectedIndex, onAction]);
+  }, [open, filtered, selectedIndex, onAction, onClose]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -88,6 +88,14 @@ export function CommandPalette({ open, onClose, onAction }: Props) {
       map.set(cmd.group, g);
     });
     return Array.from(map.entries());
+  }, [filtered]);
+
+  // Index of each command in the flat list, so the highlighted row matches the
+  // keyboard cursor even when the list is split across groups.
+  const indexById = useMemo(() => {
+    const map = new Map<string, number>();
+    filtered.forEach((cmd, i) => map.set(cmd.id, i));
+    return map;
   }, [filtered]);
 
   return (
@@ -125,7 +133,7 @@ export function CommandPalette({ open, onClose, onAction }: Props) {
                 <div key={group} className="cmd-group">
                   <div className="cmd-group-label">{group}</div>
                   {cmds.map((cmd) => {
-                    const globalIdx = filtered.indexOf(cmd);
+                    const globalIdx = indexById.get(cmd.id) ?? -1;
                     const Icon = cmd.icon;
                     return (
                       <div

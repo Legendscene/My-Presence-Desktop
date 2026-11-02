@@ -23,17 +23,30 @@ type FetchDataUrlResult =
   | { ok: true; dataUrl: string; mime: string; animated: boolean }
   | { ok: false; error: string };
 
+// Mirrors of the settings the main process needs before a window exists.
+type StartupState = {
+  startMinimized: boolean;
+  closeToTray: boolean;
+  minimizeToTray: boolean;
+  launchOnStartup: boolean;
+};
+
 contextBridge.exposeInMainWorld('myPresenceDesktop', {
   getMeta: () => ipcRenderer.invoke('app:get-meta'),
   setLaunchOnStartup: (enabled: boolean): Promise<{ ok: boolean }> =>
     ipcRenderer.invoke('app:set-login-item', enabled),
   getLaunchOnStartup: (): Promise<boolean> => ipcRenderer.invoke('app:get-login-item'),
+  setStartupState: (patch: Partial<StartupState>): Promise<StartupState> =>
+    ipcRenderer.invoke('app:startup-state', patch),
+  getStartupState: (): Promise<StartupState> => ipcRenderer.invoke('app:startup-state'),
   connect: (applicationId: string) => ipcRenderer.invoke('rpc:connect', applicationId),
   setActivity: (activity: unknown) => ipcRenderer.invoke('rpc:set-activity', activity),
   clear: () => ipcRenderer.invoke('rpc:clear'),
   disconnect: () => ipcRenderer.invoke('rpc:disconnect'),
   uploadImage: (): Promise<UploadResult> => ipcRenderer.invoke('image:upload'),
   uploadVideo: (): Promise<VideoUploadResult> => ipcRenderer.invoke('video:upload'),
+  saveVideoBytes: (base64: string, fileName: string): Promise<VideoUploadResult> =>
+    ipcRenderer.invoke('video:save-bytes', { base64, fileName }),
   resolveImageUrl: (url: string): Promise<ResolveResult> => ipcRenderer.invoke('image:resolve', url),
   fetchImageAsDataUrl: (url: string): Promise<FetchDataUrlResult> => ipcRenderer.invoke('image:fetch-data-url', url),
   uploadImageBytes: (base64: string, mime: string): Promise<UploadResult> =>

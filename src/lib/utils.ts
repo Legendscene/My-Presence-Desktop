@@ -1,9 +1,11 @@
 export function formatRelative(dateIso: string) {
   const delta = Math.round((Date.now() - new Date(dateIso).getTime()) / 60000);
-  if (delta <= 1) return 'Updated just now';
-  if (delta < 60) return `Updated ${delta} min ago`;
+  // A timestamp in the future means clock skew or a bad saved value, not
+  // "just now" — so negative values fall through to the day bucket.
+  if (delta >= 0 && delta <= 1) return 'Updated just now';
+  if (delta > 1 && delta < 60) return `Updated ${delta} min ago`;
   const hours = Math.round(delta / 60);
-  if (hours < 24) return `Updated ${hours}h ago`;
+  if (hours > 0 && hours < 24) return `Updated ${hours}h ago`;
   const days = Math.round(hours / 24);
   return `Updated ${days}d ago`;
 }

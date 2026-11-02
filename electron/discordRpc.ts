@@ -35,6 +35,15 @@ export type DiscordActivity = {
 
 type StatusListener = (payload: RpcStatusPayload) => void;
 
+// The IPC payload is whatever JSON Discord put on the wire. We only ever read a
+// couple of well-known fields, so model exactly those instead of `any`.
+type RpcFramePayload = {
+  evt?: string;
+  cmd?: string;
+  message?: string;
+  data?: { message?: string; code?: number };
+} | null;
+
 function getIpcPath(id: number): string {
   if (process.platform === 'win32') {
     return `\\\\?\\pipe\\discord-ipc-${id}`;
@@ -196,9 +205,9 @@ export class DiscordRpcClient {
       const payloadRaw = this.readBuffer.subarray(8, 8 + length).toString('utf8');
       this.readBuffer = this.readBuffer.subarray(8 + length);
 
-      let payload: any = null;
+      let payload: RpcFramePayload = null;
       try {
-        payload = JSON.parse(payloadRaw);
+        payload = JSON.parse(payloadRaw) as RpcFramePayload;
       } catch {
         payload = null;
       }
@@ -206,7 +215,7 @@ export class DiscordRpcClient {
     }
   }
 
-  private handleFrame(opcode: Opcode, payload: any) {
+  private handleFrame(opcode: Opcode, payload: RpcFramePayload) {
     if (opcode === 3) {
       // PING -> respond with PONG.
       this.send(4, payload);

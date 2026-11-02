@@ -1,6 +1,11 @@
 {
   "compilerOptions": {
     "composite": true,
+    // Keep the incremental build info INSIDE the output directory. With it at
+    // the repo root it used to be committed, and a fresh clone then saw an
+    // "up to date" project, skipped emit entirely, and shipped an app with no
+    // dist-electron/main.js — `electron .` exited 1 with no error at all.
+    "tsBuildInfoFile": "dist-electron/.tsbuildinfo",
     "target": "ES2020",
     "module": "CommonJS",
     "moduleResolution": "Node",

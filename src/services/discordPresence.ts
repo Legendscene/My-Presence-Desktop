@@ -12,6 +12,8 @@ export type DiscordServiceState = {
 
 type Listener = (state: DiscordServiceState) => void;
 
+const PUSH_DEBOUNCE_MS = 350;
+
 // Shape of the activity object sent to Discord (matches electron/discordRpc.ts).
 type DiscordActivity = {
   type?: number;
@@ -103,6 +105,10 @@ export class DiscordPresenceService {
   // Runtime moments powering the automatic timestamp modes.
   private connectionMs?: number;
   private lastUpdateMs?: number;
+  // Trailing-edge throttle for live edits + the last payload we actually sent,
+  // so no-op changes never hit Discord at all.
+  private pushTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastSentActivity: string | null = null;
 
   private timestampContext(): TimestampContext {
     return {
@@ -111,6 +117,32 @@ export class DiscordPresenceService {
       connectionMs: this.connectionMs,
       lastUpdateMs: this.lastUpdateMs
     };
+  }
+
+  /**
+   * Push an updated activity without a reconnect handshake. Editing a field while
+   * live used to run the full connect + SET_ACTIVITY round trip on every
+   * keystroke; coalescing means a burst of edits costs one IPC message.
+   */
+  pushActivity(profile: PresenceProfile) {
+    if (this.state.status !== 'connected') {
+      void this.start(profile);
+      return;
+    }
+
+    const payload = mapProfileToActivity(profile, this.timestampContext());
+    const serialized = JSON.stringify(payload);
+    if (serialized === this.lastSentActivity) return;
+    this.lastSentActivity = serialized;
+
+    if (this.pushTimer) clearTimeout(this.pushTimer);
+    this.pushTimer = setTimeout(() => {
+      this.pushTimer = null;
+      const activity = mapProfileToActivity(profile, this.timestampContext());
+      this.lastSentActivity = JSON.stringify(activity);
+      this.lastUpdateMs = Date.now();
+      void this.bridge?.setActivity?.(activity).catch(() => {});
+    }, PUSH_DEBOUNCE_MS);
   }
 
   constructor() {
@@ -164,6 +196,7 @@ export class DiscordPresenceService {
     }
 
     this.lastApplicationId = applicationId;
+    this.cancelPendingPush();
     this.setState({
       status: 'connecting',
       message: `Connecting ${profile.name}…`,
@@ -179,7 +212,9 @@ export class DiscordPresenceService {
         this.connectionMs = Date.now();
       }
       this.lastUpdateMs = Date.now();
-      await bridge.setActivity(mapProfileToActivity(profile, this.timestampContext()));
+      const activity = mapProfileToActivity(profile, this.timestampContext());
+      this.lastSentActivity = JSON.stringify(activity);
+      await bridge.setActivity(activity);
       // Remember this as the live profile so a background/login startup can
       // auto-resume it without the user opening the window.
       persistence.saveLiveState({ isLive: true, profileId: profile.id });
@@ -199,6 +234,8 @@ export class DiscordPresenceService {
 
   async stop() {
     const bridge = this.bridge;
+    this.cancelPendingPush();
+    this.lastSentActivity = null;
     try {
       await bridge?.clear?.();
     } catch {
@@ -250,6 +287,7 @@ export class DiscordPresenceService {
       await bridge.disconnect?.();
       await bridge.connect(this.lastApplicationId);
       this.connectionMs = Date.now();
+      this.lastSentActivity = null;
       this.setState({
         status: 'connected',
         message: 'Reconnected to Discord',
@@ -261,6 +299,13 @@ export class DiscordPresenceService {
         message: error instanceof Error ? error.message : 'Reconnect failed.',
         activeProfileId: this.state.activeProfileId
       });
+    }
+  }
+
+  private cancelPendingPush() {
+    if (this.pushTimer) {
+      clearTimeout(this.pushTimer);
+      this.pushTimer = null;
     }
   }
 

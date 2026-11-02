@@ -36,6 +36,7 @@ export function LivePreview({ profile }: { profile: PresenceProfile }) {
   const hasLargeImage = Boolean(profile.assets.largeImage);
   const activityName = profile.details || profile.name;
   const applicationName = profile.name || 'MY PRESENCE';
+  const activityLabel = getActivityLabel(profile.activityType);
 
   return (
     <aside className="preview-panel live-preview-hero glass-panel">
@@ -67,7 +68,9 @@ export function LivePreview({ profile }: { profile: PresenceProfile }) {
       <div className={`presence-preview-stage preview-bg-${background}`}>
         <motion.div className="presence-preview-card" layout transition={{ duration: 0.22, ease: 'easeOut' }}>
           <div className="presence-preview-app">
-            <div className="presence-app-icon">{applicationName.slice(0, 2).toUpperCase()}</div>
+            <div className="presence-app-icon">
+              <img src="./ic_app_logo.png" alt="MY Presence" />
+            </div>
             <div>
               <strong>{applicationName}</strong>
               <span>{profile.activityType}</span>
@@ -113,7 +116,7 @@ export function LivePreview({ profile }: { profile: PresenceProfile }) {
             <div className="presence-preview-copy">
               <AnimatePresence mode="popLayout">
                 <motion.span key={profile.activityType} className="presence-activity-type" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}>
-                  {profile.activityType} a game
+                  {activityLabel}
                 </motion.span>
                 {activityName ? (
                   <motion.strong key={activityName} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}>
@@ -171,6 +174,16 @@ export function LivePreview({ profile }: { profile: PresenceProfile }) {
       </div>
     </aside>
   );
+}
+
+function getActivityLabel(activityType: PresenceProfile['activityType']) {
+  switch (activityType) {
+    case 'Playing': return 'Playing a game';
+    case 'Streaming': return 'Streaming';
+    case 'Listening': return 'Listening to music';
+    case 'Watching': return 'Watching';
+    case 'Competing': return 'Competing in a game';
+  }
 }
 
 function isImageUrl(value: string) {

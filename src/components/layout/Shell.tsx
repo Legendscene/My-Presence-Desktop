@@ -2,33 +2,40 @@ import { PropsWithChildren, useEffect, useRef, useState, useCallback } from 'rea
 import { Settings2, Minus, Square, X } from 'lucide-react';
 import { useAppStore } from '../../lib/store';
 import { discordPresenceService } from '../../services/discordPresence';
-import type { ConnectionStatus } from '../../lib/types';
 import { CommandPalette } from './CommandPalette';
 
 export function Shell({ children }: PropsWithChildren) {
   const shellRef = useRef<HTMLDivElement>(null);
-  const connectionStatus = useAppStore((state) => state.connectionStatus);
-  const statusMessage = useAppStore((state) => state.statusMessage);
   const setConnectionStatus = useAppStore((state) => state.setConnectionStatus);
-  const profiles = useAppStore((state) => state.profiles);
-  const selectedProfileId = useAppStore((state) => state.selectedProfileId);
   const setActiveTab = useAppStore((state) => state.setActiveTab);
   const createProfile = useAppStore((state) => state.createProfile);
   const [paletteOpen, setPaletteOpen] = useState(false);
-
-  const currentProfile = profiles.find((p) => p.id === selectedProfileId);
 
   useEffect(() => {
     const bridge = window.myPresenceDesktop;
     if (bridge) {
       bridge.getMeta().catch(() => {});
-      const { settings } = useAppStore.getState();
-      bridge.setLaunchOnStartup?.(settings.launchOnStartup).catch(() => {});
+      const { settings, profiles } = useAppStore.getState();
+      // Push the startup flags into the main process on every launch. It cannot
+      // read localStorage itself, so without this a reinstall (or a settings
+      // change made while the app was closed) leaves the window using whatever
+      // the previous run happened to write.
+      bridge.setStartupState?.({
+        startMinimized: settings.startMinimized,
+        closeToTray: settings.closeToTray,
+        minimizeToTray: settings.minimizeToTray,
+        launchOnStartup: settings.launchOnStartup
+      }).catch(() => {});
       void discordPresenceService.resumeIfLive(profiles);
     }
 
     const unsubscribe = discordPresenceService.subscribe((state) => {
       setConnectionStatus(state.status, state.message);
+      // Discord closing the socket (client quit, pipe reset) must not leave a
+      // profile stuck showing "Live" — the presence is gone at that point.
+      if ((state.status === 'disconnected' || state.status === 'error') && state.activeProfileId) {
+        useAppStore.getState().setProfileStatus(state.activeProfileId, 'idle');
+      }
     });
     return () => { unsubscribe(); };
   }, [setConnectionStatus]);
@@ -42,6 +49,39 @@ export function Shell({ children }: PropsWithChildren) {
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
+  }, []);
+
+  // The tray menu talks to the renderer through these events. Without a
+  // subscriber, Go Live / Pause / Reconnect / Themes / Settings were all no-ops.
+  useEffect(() => {
+    const unsubscribe = window.myPresenceDesktop?.onTrayAction?.((action) => {
+      const state = useAppStore.getState();
+      const profile = state.profiles.find((p) => p.id === state.selectedProfileId);
+      switch (action) {
+        case 'go-live':
+          if (profile) {
+            state.setProfileStatus(profile.id, 'live');
+            void discordPresenceService.start(profile);
+          }
+          break;
+        case 'pause':
+          if (profile) state.setProfileStatus(profile.id, 'idle');
+          void discordPresenceService.stop();
+          break;
+        case 'reconnect':
+          if (profile) void discordPresenceService.start(profile);
+          break;
+        case 'themes':
+          state.setActiveTab('background');
+          break;
+        case 'settings':
+          state.setActiveTab('settings');
+          break;
+        default:
+          break;
+      }
+    });
+    return () => { unsubscribe?.(); };
   }, []);
 
   const handlePaletteAction = useCallback((action: string) => {
@@ -63,15 +103,24 @@ export function Shell({ children }: PropsWithChildren) {
     else if (action === 'toggle-presence') {
       const profile = state.profiles.find((p) => p.id === state.selectedProfileId);
       if (profile) {
-        if (profile.status === 'live') discordPresenceService.stop();
-        else discordPresenceService.start(profile).catch(() => {});
+        if (profile.status === 'live') {
+          state.setProfileStatus(profile.id, 'idle');
+          void discordPresenceService.stop();
+        } else {
+          state.setProfileStatus(profile.id, 'live');
+          void discordPresenceService.start(profile);
+        }
       }
     }
     else if (action === 'connect-discord') {
       const profile = state.profiles.find((p) => p.id === state.selectedProfileId);
-      if (profile) discordPresenceService.start(profile).catch(() => {});
+      if (profile) void discordPresenceService.start(profile);
     }
-    else if (action === 'disconnect-discord') { discordPresenceService.stop(); }
+    else if (action === 'disconnect-discord') {
+      const profile = state.profiles.find((p) => p.id === state.selectedProfileId);
+      if (profile) state.setProfileStatus(profile.id, 'idle');
+      void discordPresenceService.stop();
+    }
     else if (action === 'toggle-background') {
       setActiveTab('background');
     }

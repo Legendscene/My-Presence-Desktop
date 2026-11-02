@@ -24,9 +24,7 @@ const SECTION_CONFIG = [
 
 export function PresenceEditor({ profile }: Props) {
   const updateProfile = useAppStore((state) => state.updateProfile);
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
   const [uploading, setUploading] = useState<ImageSlot | null>(null);
-  const [resolving, setResolving] = useState<ImageSlot | null>(null);
   const [editingSlot, setEditingSlot] = useState<ImageSlot | null>(null);
   const [uploadError, setUploadError] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -34,6 +32,12 @@ export function PresenceEditor({ profile }: Props) {
   });
 
   const toggleSection = (key: string) => setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // Editing while live used to re-run the whole connect + setActivity round trip
+  // per keystroke. pushActivity() coalesces the burst into one IPC message.
+  const resyncIfLive = (next: PresenceProfile) => {
+    if (next.status === 'live') discordPresenceService.pushActivity(next);
+  };
 
   const patch = <K extends keyof PresenceProfile>(key: K, value: PresenceProfile[K]) => {
     updateProfile(profile.id, (current) => {
@@ -49,10 +53,6 @@ export function PresenceEditor({ profile }: Props) {
       resyncIfLive(next);
       return next;
     });
-  };
-
-  const resyncIfLive = (next: PresenceProfile) => {
-    if (next.status === 'live') void discordPresenceService.start(next);
   };
 
   const setImage = (slot: ImageSlot, url: string) => {
@@ -93,15 +93,12 @@ export function PresenceEditor({ profile }: Props) {
     const bridge = window.myPresenceDesktop;
     if (!bridge?.resolveImageUrl) return;
     setUploadError('');
-    setResolving(slot);
     try {
       const result = await bridge.resolveImageUrl(value);
       if (result.ok) { if (result.changed) setImage(slot, result.url); }
       else setUploadError(result.error);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Could not open that link.');
-    } finally {
-      setResolving(null);
     }
   };
 
@@ -127,11 +124,8 @@ export function PresenceEditor({ profile }: Props) {
 
   const isLive = profile.status === 'live';
   const goLive = () => {
-    updateProfile(profile.id, (current) => {
-      const next = { ...current, status: 'live' as const };
-      void discordPresenceService.start(next);
-      return next;
-    });
+    updateProfile(profile.id, (current) => ({ ...current, status: 'live' as const }));
+    void discordPresenceService.start({ ...profile, status: 'live' });
   };
   const stopLive = () => {
     updateProfile(profile.id, (current) => ({ ...current, status: 'idle' as const }));
@@ -150,7 +144,10 @@ export function PresenceEditor({ profile }: Props) {
             <XCircle size={14} />
             <span>Stop</span>
           </button>
-          <button className="ui-button ui-button--ghost ui-button--sm" onClick={() => void discordPresenceService.stop()}>
+          <button className="ui-button ui-button--ghost ui-button--sm" onClick={() => {
+            if (isLive) updateProfile(profile.id, (current) => ({ ...current, status: 'idle' as const }));
+            void discordPresenceService.stop();
+          }}>
             <RefreshCcw size={14} />
             <span>Clear</span>
           </button>

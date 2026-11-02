@@ -122,11 +122,17 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
 .shell-content { flex: 1; display: flex; overflow: hidden; position: relative; }
 
 /* ─── 3-column grid ─── */
+/* The first column goes through --sidebar-current rather than var(--sidebar-w)
+   directly so the collapse toggle has a single thing to animate to 0, and so
+   every responsive override below follows the collapse for free. */
 .app-grid {
+  --sidebar-current: var(--sidebar-w);
   display: grid;
-  grid-template-columns: var(--sidebar-w) minmax(0, 1.62fr) minmax(420px, 1fr);
+  grid-template-columns: var(--sidebar-current) minmax(0, 1.62fr) minmax(420px, 1fr);
   gap: 0;
   height: 100%; width: 100%;
+  position: relative;
+  transition: grid-template-columns 0.22s var(--ease);
 }
 
 /* ─── Sidebar ─── */
@@ -388,7 +394,7 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
 .skeleton { background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-hover) 50%, var(--bg-surface) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; will-change: background-position; }
 
 /* ─── Floating preview depth ─── */
-.preview-column { display: flex; flex-direction: column; overflow-y: auto; background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent); box-shadow: inset 1px 0 0 var(--border); }
+.preview-column { display: flex; flex-direction: column; overflow-y: auto; min-width: 0; background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent); box-shadow: inset 1px 0 0 var(--border); }
 .live-preview-hero { display: flex; flex-direction: column; padding: var(--space-2); gap: var(--space-1); }
 
 /* ─── Elevation utility ─── */
@@ -651,7 +657,7 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
 }
 
 /* ─── Theme variable injection ─── */
-[data-theme] .theme-root { --theme-accent: var(--accent); --theme-blur: 0px; --theme-brightness: 100%; --theme-opacity: 100%; --theme-glass: 10px; --theme-radius: 12px; --theme-noise: 0; --theme-bg: var(--bg); }
+[data-theme] .theme-root { --theme-accent: var(--accent); --theme-blur: 0px; --theme-brightness: 100; --theme-opacity: 100; --theme-glass: 10px; --theme-radius: 12px; --theme-noise: 0; --theme-bg: var(--bg); }
 
 /* ─── Custom Titlebar ─── */
 .titlebar {
@@ -1602,7 +1608,7 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
 /* Profile Card - Redesigned */
 .profile-card {
   display: grid;
-  grid-template-columns: 44px 1fr auto;
+  grid-template-columns: 44px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
@@ -1709,12 +1715,18 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* `overflow: hidden` collapses the automatic minimum size to 0, so without an
+     explicit basis the name shrank to a few pixels while the timestamp kept its
+     full width — the profile name was invisible in the sidebar. */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .profile-updated {
   font-size: 11px;
   color: var(--text-tertiary);
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .profile-subtitle {
@@ -1865,13 +1877,13 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
   flex-direction: column;
   overflow: hidden;
   background: var(--bg);
-  border-right: 1px solid var(--border);
+  border-right: 0;
 }
 
-/* App Grid - Updated for 2-column layout (no preview) */
+/* App Grid: sidebar | editor | live preview */
 .app-grid {
   display: grid;
-  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-current) minmax(0, 1.62fr) minmax(420px, 1fr);
   gap: 0;
   height: 100%;
   width: 100%;
@@ -2095,14 +2107,400 @@ input, textarea, select { font-family: inherit; font-size: 15px; color: var(--te
   margin-top: 4px;
 }
 
-/* App Grid for Single Column (no preview) */
-@media (max-width: 1400px) {
+/* The app's own minimum window is 1240px wide, so the three-column layout has to
+   survive at that size. The preview is the only column allowed to give up room:
+   it shrinks first, and is dropped entirely once even that is not enough.
+   Stacking it under the editor instead would halve the sidebar's height, which
+   starved the profile list until it collapsed to zero and stopped scrolling. */
+@media (max-width: 1500px) {
   .app-grid {
-    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    grid-template-columns: var(--sidebar-current) minmax(0, 1fr) minmax(330px, 0.8fr);
   }
 }
 
-/* Hidden preview styles for backwards compat */
-.preview-column {
-  display: none;
+@media (max-width: 1240px) {
+  .app-grid {
+    grid-template-columns: var(--sidebar-current) minmax(0, 1fr);
+  }
+  .preview-column { display: none; }
+}
+
+/* Keep the shell from ever overflowing the window, whatever the content. */
+.shell-root { height: 100vh; overflow: hidden; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ADDITIONS — Background studio, library panel, onboarding
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Background: source picker ─── */
+.bg-type-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.bg-type-card { position: relative; }
+.bg-type-card small { font-size: 10px; font-weight: 400; color: var(--text-tertiary); text-align: center; line-height: 1.2; }
+.bg-type-card.active small { color: color-mix(in srgb, var(--accent) 75%, transparent); }
+.bg-type-card:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.bg-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.bg-panel-header .bg-section-label { margin: 0; }
+
+.bg-section-controls { display: flex; flex-direction: column; gap: 10px; }
+.bg-section-controls .bg-section-label { margin-bottom: 2px; }
+.bg-note { font-size: 11px; color: var(--text-tertiary); line-height: 1.45; margin: 0; }
+.bg-hero-hint { font-size: 11px; color: var(--text-tertiary); text-align: center; margin: 8px 0 0; }
+
+/* ─── Background: gradient presets ─── */
+.bg-preset-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.bg-preset {
+  aspect-ratio: 1; border-radius: var(--r-sm); border: 1px solid var(--border);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: #fff; transition: transform 0.14s var(--ease), box-shadow 0.14s var(--ease);
+}
+.bg-preset:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
+.bg-preset.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* ─── Background: segmented fit control ─── */
+.bg-fit-row { display: flex; align-items: center; gap: 10px; }
+.bg-fit-row > label { font-size: 12px; font-weight: 500; color: var(--text-secondary); min-width: 60px; }
+.bg-segmented {
+  display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--r-sm);
+  background: var(--bg); border: 1px solid var(--border);
+}
+.bg-segmented button {
+  padding: 5px 12px; font-size: 11px; font-weight: 500; border: none; border-radius: 4px;
+  background: transparent; color: var(--text-tertiary); cursor: pointer; transition: var(--spring);
+}
+.bg-segmented button:hover { color: var(--text-secondary); }
+.bg-segmented button.active { background: var(--accent-soft); color: var(--accent); }
+
+/* ─── Background: saved cards tool row ─── */
+.bg-recent-tools { position: absolute; top: 4px; right: 4px; display: flex; gap: 3px; opacity: 0; transition: opacity 0.15s ease; }
+.bg-recent-card:hover .bg-recent-tools { opacity: 1; }
+.bg-recent-delete { position: static; opacity: 1; }
+.bg-recent-delete:hover { background: var(--accent); color: #fff; }
+.bg-recent-delete.danger:hover { background: var(--red); }
+
+.bg-toast.error { cursor: pointer; }
+
+/* ─── Library panel ─── */
+.panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.profile-count {
+  font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 999px; padding: 2px 8px; margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.icon-button.is-favorite { color: var(--accent); }
+/* Only the gap is overridden here. Re-declaring display/flex-direction without
+   `flex: 1` and `overflow-y: auto` silently cancelled the rules above, which
+   left the library unable to scroll — the panel grew past the window instead
+   of scrolling inside it. */
+.profile-list { gap: 2px; min-height: 0; }
+.profile-card { text-align: left; }
+
+/* ─── Onboarding: appearance cards get a subtitle line ─── */
+.onboarding-theme-card { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+.onboarding-theme-hint { font-size: 10px; color: var(--text-tertiary); opacity: 0.85; }
+
+/* ─── Sidebar scroll correctness ───
+   The list is the only part of the sidebar allowed to scroll, so the header,
+   search, nav and the New Profile button must all keep their natural height. */
+.profiles-panel { min-height: 0; }
+.panel-header { flex-shrink: 0; }
+.panel-nav { flex-shrink: 0; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Collapsible library panel
+   ══════════════════════════════════════════════════════════════════════════ */
+/* Collapsing drops the column to zero rather than scaling or fading the panel,
+   so nothing is left behind in the editor's space. The aside fades out with the
+   width change and stops taking clicks the moment it is unreachable. */
+.app-grid.sidebar-collapsed { --sidebar-current: 0px; }
+.app-grid.sidebar-collapsed > .profiles-panel {
+  opacity: 0;
+  pointer-events: none;
+  /* The panel's own padding and right border would otherwise floor its width at
+     ~33px even with a 0px grid track, leaving a dead strip over the editor. */
+  padding-left: 0;
+  padding-right: 0;
+  border-right-width: 0;
+}
+.app-grid > .profiles-panel {
+  min-width: 0;
+  opacity: 1;
+  transition: opacity 0.14s var(--ease);
+}
+
+/* The edge handle that brings the panel back. It lives outside the collapsed
+   column, pinned to the left edge of the workspace, so there is always one
+   visible affordance for getting the library back. */
+.sidebar-reveal {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 74px;
+  padding: 0 7px 0 3px;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--bg-surface);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  box-shadow: 4px 0 14px rgba(0, 0, 0, 0.28);
+  transition: color 0.14s var(--ease), width 0.22s var(--ease), background 0.14s var(--ease);
+}
+.sidebar-reveal:hover { color: var(--accent); background: var(--bg-elevated); }
+.sidebar-reveal-text {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width 0.22s var(--ease), opacity 0.14s var(--ease);
+}
+.sidebar-reveal:hover .sidebar-reveal-text { max-width: 80px; opacity: 1; }
+
+.panel-header-actions { display: flex; align-items: center; gap: 6px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Onboarding
+   ══════════════════════════════════════════════════════════════════════════ */
+/* Small print under a choice list: sets expectations about tray behaviour so
+   the startup toggle does not read as "this will pop up on every boot". */
+.onboarding-note {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MY PRESENCE POLISH — final surface pass
+   Keep these overrides together so the visual system stays predictable while
+   older component styles remain easy to remove in a future cleanup.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --bg: #080b14;
+  --bg-surface: #101522;
+  --bg-elevated: #171d2d;
+  --bg-hover: #1d2639;
+  --border: rgba(165, 177, 255, 0.12);
+  --border-strong: rgba(165, 177, 255, 0.22);
+  --text: rgba(246, 247, 255, 0.94);
+  --text-secondary: rgba(217, 221, 242, 0.66);
+  --text-tertiary: rgba(184, 191, 220, 0.42);
+  --accent: #7c6cff;
+  --accent-hover: #9183ff;
+  --accent-soft: rgba(124, 108, 255, 0.13);
+  --accent-line: rgba(124, 108, 255, 0.38);
+  --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.24);
+}
+
+body {
+  background:
+    radial-gradient(900px circle at 50% -18%, rgba(124, 108, 255, 0.16), transparent 62%),
+    radial-gradient(700px circle at 100% 100%, rgba(29, 211, 255, 0.07), transparent 64%),
+    var(--bg);
+}
+
+[data-theme="light"] {
+  --bg: #f4f6fb;
+  --bg-surface: rgba(255, 255, 255, 0.82);
+  --bg-elevated: #ffffff;
+  --bg-hover: #e9edfa;
+  --border: rgba(52, 64, 105, 0.12);
+  --border-strong: rgba(52, 64, 105, 0.22);
+  --text: rgba(25, 31, 54, 0.94);
+  --text-secondary: rgba(45, 54, 86, 0.66);
+  --text-tertiary: rgba(55, 67, 106, 0.48);
+}
+
+[data-theme="light"] body {
+  background: radial-gradient(900px circle at 50% -18%, rgba(124, 108, 255, 0.13), transparent 62%), var(--bg);
+}
+
+[data-theme] .titlebar {
+  height: 50px;
+  min-height: 50px;
+  padding: 0 14px;
+  background: rgba(9, 12, 22, 0.82);
+  border-color: var(--border);
+  border-radius: 0;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+[data-theme="light"] .titlebar { background: rgba(255, 255, 255, 0.78); }
+.titlebar-logo { width: 26px; height: 26px; border-radius: 8px; }
+.titlebar-label { color: var(--text); font-size: 13px; letter-spacing: 0.01em; }
+.titlebar-actions { gap: 2px; }
+.titlebar-btn { width: 34px; height: 32px; border-radius: 8px; }
+
+[data-theme] .profiles-panel {
+  padding: 22px 16px 16px;
+  background: rgba(12, 16, 28, 0.84);
+  border-color: var(--border);
+  border-radius: 0;
+  box-shadow: inset -1px 0 0 rgba(255,255,255,0.02);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+[data-theme="light"] .profiles-panel { background: rgba(246, 248, 253, 0.88); }
+
+[data-theme] .workspace-panel {
+  background: rgba(8, 11, 20, 0.68);
+  border-color: var(--border);
+  border-radius: 0;
+}
+[data-theme="light"] .workspace-panel { background: rgba(244, 246, 251, 0.72); }
+
+[data-theme] .preview-column {
+  background: linear-gradient(180deg, rgba(20, 26, 44, 0.86), rgba(8, 11, 20, 0.74));
+  border-radius: 0;
+  box-shadow: inset 1px 0 0 var(--border);
+}
+[data-theme="light"] .preview-column { background: linear-gradient(180deg, rgba(235, 239, 249, 0.82), rgba(244, 246, 251, 0.78)); }
+
+.workspace-body { padding: 28px 32px 36px; }
+.page-workspace-body { padding: 0; }
+.editor-workspace-body { overflow-y: auto; }
+.presence-editor { max-width: 920px; margin: 0 auto; }
+
+.panel-header { margin-bottom: 18px; }
+.panel-header h2 { font-size: 22px; letter-spacing: -0.04em; }
+.profile-count { padding: 3px 9px; color: var(--text-secondary); background: var(--bg-elevated); }
+.profile-list { gap: 5px; padding: 0 2px; }
+.profile-card {
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  min-height: 66px;
+  padding: 11px 10px;
+  border: 1px solid transparent;
+}
+.profile-card.active { border-color: rgba(124, 108, 255, 0.25); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+.profile-avatar { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, rgba(124,108,255,0.28), rgba(29,211,255,0.12)); color: #b9b2ff; }
+.profile-card.active .profile-avatar { background: linear-gradient(135deg, var(--accent), #9c86ff); color: white; }
+.profile-title-line strong { font-size: 13px; }
+.profile-subtitle { font-size: 11px; }
+.profile-actions { position: relative; z-index: 2; }
+.panel-nav { gap: 5px; padding-top: 14px; }
+.nav-item { min-height: 52px; padding: 8px 10px; }
+.nav-icon { width: 34px; height: 34px; border-radius: 10px; }
+.nav-title { font-size: 12px; }
+.floating-add-button { height: 46px; background: linear-gradient(180deg, rgba(124,108,255,0.12), rgba(124,108,255,0.05)); border-color: rgba(124,108,255,0.32); color: #b9b2ff; }
+
+.workspace-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 30px 32px 24px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.035), transparent);
+}
+.workspace-view-heading { display: flex; align-items: center; gap: 15px; min-width: 0; }
+.workspace-view-icon {
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; border-radius: 14px; color: #c3bdff;
+  background: linear-gradient(135deg, rgba(124,108,255,0.24), rgba(29,211,255,0.12));
+  border: 1px solid rgba(124,108,255,0.28);
+}
+.workspace-view-header h1 { margin-top: 1px; font-size: 25px; letter-spacing: -0.045em; }
+.workspace-view-header p:not(.eyebrow) { margin-top: 3px; font-size: 13px; color: var(--text-secondary); }
+.connection-badge {
+  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: 999px;
+  color: var(--text-tertiary); background: rgba(255,255,255,0.035); font-size: 11px; font-weight: 600;
+}
+.connection-badge.connected { color: var(--green); background: var(--green-soft); border-color: rgba(34,197,94,0.2); }
+.connection-badge.connecting { color: var(--amber); background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2); }
+
+.editor-sticky-header {
+  top: -1px; padding: 12px 0 14px; margin-bottom: 16px;
+  background: linear-gradient(180deg, rgba(8,11,20,0.98) 72%, transparent);
+  border-bottom-color: var(--border);
+}
+[data-theme="light"] .editor-sticky-header { background: linear-gradient(180deg, rgba(244,246,251,0.98) 72%, transparent); }
+.editor-title { font-size: 23px; letter-spacing: -0.04em; }
+.editor-subtitle { font-size: 12px; }
+.editor-header-actions { gap: 6px; }
+.editor-section { background: rgba(16,21,34,0.82); border-color: var(--border); box-shadow: 0 12px 34px rgba(0,0,0,0.08); }
+[data-theme="light"] .editor-section { background: rgba(255,255,255,0.72); }
+.editor-section + .editor-section { margin-top: 10px; }
+.editor-section.open { border-color: rgba(124,108,255,0.4); box-shadow: 0 14px 36px rgba(0,0,0,0.16), 0 0 0 1px rgba(124,108,255,0.06); }
+.editor-section-header { min-height: 68px; padding: 16px 18px; }
+.editor-section-icon { width: 38px; height: 38px; border-radius: 12px; }
+.editor-section-title { font-size: 14px; }
+.editor-section-description { font-size: 11px; }
+.editor-section-body { padding: 0 18px 20px; }
+.form-control-shell, .select-trigger, .date-time-trigger { background: rgba(6,9,17,0.42); border-color: var(--border); }
+[data-theme="light"] .form-control-shell, [data-theme="light"] .select-trigger, [data-theme="light"] .date-time-trigger { background: rgba(255,255,255,0.72); }
+.form-control-shell:focus-within, .select-trigger.open, .date-time-trigger.open { box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.live-preview-hero { padding: 24px 20px; gap: 16px; }
+.preview-hero-header h2 { font-size: 21px; letter-spacing: -0.035em; }
+.preview-controls.minimal { padding-bottom: 2px; }
+.preview-select select { height: 32px; padding-left: 10px; border-radius: 8px; background: rgba(255,255,255,0.05); }
+.presence-preview-stage { min-height: 520px; padding: 22px 12px; border-radius: 18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); }
+.presence-preview-card { width: min(94%, 460px); padding: 22px; border-radius: 20px; gap: 20px; }
+.presence-preview-app { gap: 12px; }
+.presence-app-icon { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #7c6cff, #36d1dc); padding: 8px; }
+.presence-app-icon img { object-fit: contain; }
+.presence-preview-app > div:last-child { display: flex; flex-direction: column; gap: 1px; }
+.presence-preview-app > div:last-child strong { font-size: 14px; }
+.presence-preview-app > div:last-child span { font-size: 11px; color: rgba(255,255,255,0.45); }
+.presence-preview-content { grid-template-columns: 152px 1fr; gap: 18px; }
+.presence-large-artwork { width: 152px; height: 152px; border-radius: 18px; }
+.presence-small-artwork { width: 44px; height: 44px; border-radius: 13px; border-width: 4px; }
+.presence-preview-copy { gap: 5px; padding-top: 2px; }
+.presence-preview-copy strong { font-size: 16px; }
+.presence-preview-copy p { font-size: 12px; }
+.presence-button { border-radius: 8px; background: rgba(255,255,255,0.07); }
+
+.assets-view, .bg-view { padding: 28px 32px 36px; gap: 24px; }
+.assets-header h3 { font-size: 22px; letter-spacing: -0.04em; }
+.assets-group { gap: 10px; }
+.assets-grid { gap: 12px; }
+.asset-card { border-radius: 14px; background: rgba(16,21,34,0.8); transition: transform 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease); }
+[data-theme="light"] .asset-card { background: rgba(255,255,255,0.75); }
+.asset-card:hover { transform: translateY(-2px); border-color: var(--accent-line); box-shadow: var(--shadow-card-hover); }
+.asset-card-preview { height: 108px; }
+.asset-card-preview img { width: 100%; height: 100%; object-fit: cover; }
+.asset-card-body { padding: 11px; }
+.assets-empty { min-height: 300px; border: 1px dashed var(--border); border-radius: 18px; background: rgba(255,255,255,0.018); }
+
+.bg-hero-preview { height: 280px; border-radius: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+.bg-type-card { min-height: 94px; border-radius: 14px; background: rgba(16,21,34,0.76); }
+[data-theme="light"] .bg-type-card { background: rgba(255,255,255,0.72); }
+.bg-type-card.active { box-shadow: 0 0 0 3px rgba(124,108,255,0.1); }
+.bg-recent-card { border-radius: 14px; }
+
+.empty-state.centered { min-height: 460px; border: 1px dashed var(--border); border-radius: 22px; background: radial-gradient(500px circle at 50% 30%, rgba(124,108,255,0.12), transparent 65%); }
+.empty-state.centered .empty-state-icon { width: 64px; height: 64px; border-radius: 20px; color: #c3bdff; background: rgba(124,108,255,0.14); box-shadow: 0 12px 32px rgba(124,108,255,0.12); }
+.empty-state.centered .empty-state-title { font-size: 19px; }
+
+@media (max-width: 920px) {
+  .workspace-body, .assets-view, .bg-view { padding-left: 20px; padding-right: 20px; }
+  .workspace-view-header { padding-left: 20px; padding-right: 20px; }
+  .workspace-view-header .connection-badge { display: none; }
+  .editor-grid.two, .asset-workbench { grid-template-columns: 1fr; }
+  .presence-preview-content { grid-template-columns: 124px 1fr; }
+  .presence-large-artwork { width: 124px; height: 124px; }
+}
+
+@media (max-width: 640px) {
+  .workspace-view-heading { gap: 11px; }
+  .workspace-view-icon { width: 38px; height: 38px; }
+  .workspace-view-header h1 { font-size: 21px; }
+  .presence-preview-content { grid-template-columns: 1fr; }
+  .presence-large-artwork { width: 100%; height: auto; aspect-ratio: 1; max-width: 180px; }
 }

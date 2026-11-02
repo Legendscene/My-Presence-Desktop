@@ -289,11 +289,56 @@ function hostOf(url: string): string {
   }
 }
 
+// The renderer hands us arbitrary URLs to download. Without a guard that turns
+// the app into an SSRF proxy: a crafted link could reach the user's router, a
+// LAN service, or a cloud metadata endpoint, and the bytes come back into the
+// renderer. Only public internet hosts are ever worth fetching here.
+const BLOCKED_HOSTNAMES = new Set(['localhost', 'metadata.google.internal', 'metadata.goog']);
+
+function assertPublicUrl(raw: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error('That is not a valid link.');
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error('Only http and https links are supported.');
+  }
+
+  const host = parsed.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (!host || BLOCKED_HOSTNAMES.has(host)) {
+    throw new Error('That link points to a local address and cannot be used.');
+  }
+
+  // IPv4 literals: reject anything that isn't a routable public address.
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (ipv4) {
+    const [a, b] = ipv4.slice(1).map(Number);
+    const isPrivate =
+      a === 0 || a === 10 || a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      a >= 224;
+    if (isPrivate) {
+      throw new Error('That link points to a local address and cannot be used.');
+    }
+  }
+
+  return parsed;
+}
+
 export async function resolveImageUrl(input: string): Promise<ResolveResult> {
   const raw = input.trim();
   if (!raw) return { ok: false, error: 'Nothing to resolve.' };
   if (!/^https?:\/\//i.test(raw)) {
     return { ok: false, error: 'That is not a web link.' };
+  }
+  try {
+    assertPublicUrl(raw);
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'That link cannot be used.' };
   }
 
   // A direct image extension only counts when it's NOT one of the page hosts
@@ -408,6 +453,12 @@ function extractOgImage(html: string): string | null {
 // Minimal GET that follows redirects (pin.it → pinterest.com) and returns the
 // decoded HTML body. Caps how much we read so a huge page can't hang us.
 function fetchText(url: string, redirectsLeft = 5): Promise<string> {
+  try {
+    // Re-check every hop so a public host can't bounce us to a private address.
+    assertPublicUrl(url);
+  } catch (error) {
+    return Promise.reject(error);
+  }
   return new Promise((resolve, reject) => {
     const lib = url.startsWith('https:') ? https : httpMod;
     const req = lib.get(
@@ -467,6 +518,7 @@ export async function fetchImageAsDataUrl(url: string): Promise<FetchDataUrlResu
     return { ok: false, error: 'That is not a web image link.' };
   }
   try {
+    assertPublicUrl(raw);
     const buf = await fetchBinary(raw);
     if (buf.length > MAX_BYTES) {
       return { ok: false, error: `That image is too big (${formatSize(buf.length)}). Keep it under 12 MB.` };
@@ -516,6 +568,11 @@ function isAnimatedGif(buf: Buffer): boolean {
 }
 
 function fetchBinary(url: string, redirectsLeft = 5): Promise<Buffer> {
+  try {
+    assertPublicUrl(url);
+  } catch (error) {
+    return Promise.reject(error);
+  }
   return new Promise((resolve, reject) => {
     const lib = url.startsWith('https:') ? https : httpMod;
     const req = lib.get(

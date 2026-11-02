@@ -1,10 +1,12 @@
-import { Upload, Search, Trash2, FileImage, Film, FolderOpen } from 'lucide-react';
-import { useMemo, useState, useCallback } from 'react';
+import { Upload, Trash2, FileImage, Film, FolderOpen } from 'lucide-react';
+import { useMemo, useCallback } from 'react';
 import { useAppStore } from '../../lib/store';
 import { SearchInput } from '../ui/forms';
 
 export function AssetsView() {
   const assets = useAppStore((state) => state.assets);
+  const addAsset = useAppStore((state) => state.addAsset);
+  const deleteAsset = useAppStore((state) => state.deleteAsset);
   const search = useAppStore((state) => state.search);
   const setSearch = useAppStore((state) => state.setSearch);
 
@@ -16,9 +18,13 @@ export function AssetsView() {
   const handleImport = useCallback(async () => {
     const bridge = window.myPresenceDesktop;
     if (bridge?.uploadImage) {
-      await bridge.uploadImage();
+      const result = await bridge.uploadImage();
+      if (result.ok) {
+        const name = result.fileName.replace(/\.[^.]+$/, '') || 'Imported image';
+        addAsset({ name, kind: 'library', accent: '#7c6cff', url: result.url });
+      }
     }
-  }, []);
+  }, [addAsset]);
 
   const grouped = useMemo(() => {
     const groups: Record<string, typeof assets> = {};
@@ -65,15 +71,15 @@ export function AssetsView() {
             <h4 className="assets-group-label">{groupName}</h4>
             <div className="assets-grid">
               {groupAssets.map((asset) => (
-                <div key={asset.id} className="asset-card">
-                  <div className="asset-card-preview" style={{ background: `linear-gradient(135deg, ${asset.accent}, #0F172A)` }}>
-                    {asset.kind === 'small' ? <FileImage size={16} /> : <Film size={16} />}
+                  <div key={asset.id} className="asset-card">
+                    <div className="asset-card-preview" style={{ background: `linear-gradient(135deg, ${asset.accent}, #0F172A)` }}>
+                      {asset.url ? <img src={asset.url} alt="" /> : asset.kind === 'small' ? <FileImage size={16} /> : <Film size={16} />}
                   </div>
                   <div className="asset-card-body">
                     <strong>{asset.name}</strong>
                     <span>{asset.kind}</span>
                   </div>
-                  <button className="asset-card-delete" title="Delete asset">
+                  <button className="asset-card-delete" title="Delete asset" onClick={() => deleteAsset(asset.id)}>
                     <Trash2 size={12} />
                   </button>
                 </div>

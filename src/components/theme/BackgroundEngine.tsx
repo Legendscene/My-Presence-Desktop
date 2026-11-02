@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { getDefaultBackgroundVideo } from '../../lib/defaultBackground';
+import { isPlayableVideoUrl } from '../../lib/media';
 import { useAppStore } from '../../lib/store';
 import type { Theme } from '../../lib/types';
 
@@ -33,11 +34,22 @@ export function BackgroundEngine() {
   const settings = useAppStore((s) => s.settings);
   const themes = useAppStore((s) => s.themes);
   const activeTheme = themes.find((t) => t.id === settings.activeThemeId);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const prevVideoSrc = useRef<string>('');
+  // Once we've swapped in the fallback we must stop re-assigning the broken
+  // source on the next effect run, otherwise the element flip-flops between the
+  // failing URL and default.mp4 on every theme tweak.
+  const usingFallback = useRef(false);
+
+  // React detaches the ref before the effect runs, so remember the last real
+  // element. Without this, switching away from a video theme leaves the element
+  // playing (audio in particular) off-screen.
+  const captureVideo = useCallback((el: HTMLVideoElement | null) => {
+    if (el) videoRef.current = el;
+  }, []);
 
   const videoSrc = getVideoSrc(activeTheme, settings);
-  const useVideo = Boolean(videoSrc && videoSrc.endsWith('.mp4'));
+  const useVideo = isPlayableVideoUrl(videoSrc);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -57,8 +69,12 @@ export function BackgroundEngine() {
     if (activeTheme) {
       root.style.setProperty('--theme-accent', activeTheme.accentColor);
       root.style.setProperty('--theme-blur', `${activeTheme.blurAmount}px`);
-      root.style.setProperty('--theme-brightness', `${activeTheme.brightness}%`);
-      root.style.setProperty('--theme-opacity', `${activeTheme.opacity}%`);
+      // These two must stay UNITLESS. They are consumed as
+      // `calc(var(--theme-opacity) / 100)`; writing "100%" made that
+      // `calc(100% / 100)` = 1%, which rendered the live-preview card at 1%
+      // opacity and applied brightness(0.01) to the app root.
+      root.style.setProperty('--theme-brightness', `${activeTheme.brightness}`);
+      root.style.setProperty('--theme-opacity', `${activeTheme.opacity}`);
       root.style.setProperty('--theme-glass', `${activeTheme.glassStrength}px`);
       root.style.setProperty('--theme-radius', `${activeTheme.cornerRadius}px`);
       root.style.setProperty('--theme-noise', activeTheme.noiseOverlay ? '1' : '0');
@@ -74,6 +90,7 @@ export function BackgroundEngine() {
 
     if (useVideo) {
       if (videoSrc !== prevVideoSrc.current) {
+        usingFallback.current = false;
         video.src = videoSrc;
         prevVideoSrc.current = videoSrc;
       }
@@ -98,6 +115,7 @@ export function BackgroundEngine() {
       video.removeAttribute('src');
       video.load();
       prevVideoSrc.current = '';
+      usingFallback.current = false;
     }
   }, [useVideo, videoSrc, activeTheme]);
 
@@ -112,12 +130,14 @@ export function BackgroundEngine() {
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // Fallback to default.mp4 on video load error
+    // Fallback to default.mp4 on video load error — once, and without letting
+    // the source effect undo it on the next render.
     const handleError = () => {
-      if (video.src && !video.src.endsWith('default.mp4')) {
-        video.src = DEFAULT_VIDEO;
-        video.play().catch(() => {});
-      }
+      if (usingFallback.current) return;
+      usingFallback.current = true;
+      prevVideoSrc.current = DEFAULT_VIDEO;
+      video.src = DEFAULT_VIDEO;
+      video.play().catch(() => {});
     };
     video.addEventListener('error', handleError);
 
@@ -127,6 +147,11 @@ export function BackgroundEngine() {
     };
   }, [useVideo]);
 
+  // Stop playback when the component goes away entirely (app shutdown).
+  useEffect(() => () => {
+    videoRef.current?.pause();
+  }, []);
+
   const objectFit = activeTheme?.videoFit === 'fit' ? 'contain' : 'cover';
   const hasOverlay = (activeTheme?.overlayOpacity ?? 0) > 0;
 
@@ -135,32 +160,62 @@ export function BackgroundEngine() {
   const opacity = (activeTheme?.opacity ?? 100) / 100;
   const commonFilter = `brightness(${brightness}%)`;
 
+  const overlay = activeTheme && hasOverlay ? (
+    <div style={{
+      position: 'absolute', inset: 0,
+      background: activeTheme.overlayColor,
+      opacity: activeTheme.overlayOpacity / 100,
+      transition: 'opacity 0.4s ease',
+    }} />
+  ) : null;
+
+  // "Blur fill" scales the video up until it covers the frame, then blurs the
+  // overflow behind a sharp copy - the standard fix for pillarbox/letterbox on
+  // a wallpaper of the wrong aspect ratio.
+  const blurFill = activeTheme?.videoFit === 'blur';
+
   if (useVideo) {
     return (
       <div className="background-engine-layer" style={{
         position: 'fixed', inset: 0, zIndex: -1,
         overflow: 'hidden', pointerEvents: 'none',
         opacity,
-        filter: `${commonFilter} blur(${blurAmount}px)`,
-        transition: 'opacity 0.4s ease, filter 0.4s ease',
+        transition: 'opacity 0.4s ease',
       }}>
+        {blurFill && (
+          <video
+            aria-hidden
+            muted
+            loop
+            playsInline
+            autoPlay
+            preload="auto"
+            src={videoSrc}
+            style={{
+              position: 'absolute', inset: '-8%',
+              width: '116%', height: '116%',
+              objectFit: 'cover',
+              filter: 'blur(24px) brightness(0.75)',
+              transform: 'scale(1.02)'
+            }}
+          />
+        )}
         <video
-          ref={videoRef}
+          ref={captureVideo}
           muted
           loop
           playsInline
           autoPlay
           preload="auto"
-          style={{ width: '100%', height: '100%', objectFit, display: 'block', transition: 'opacity 0.4s ease' }}
-        />
-        {hasOverlay && (
-          <div style={{
+          style={{
             position: 'absolute', inset: 0,
-            background: activeTheme!.overlayColor,
-            opacity: activeTheme!.overlayOpacity / 100,
-            transition: 'opacity 0.4s ease',
-          }} />
-        )}
+            width: '100%', height: '100%',
+            objectFit: blurFill ? 'contain' : objectFit,
+            display: 'block',
+            filter: `${commonFilter} blur(${blurAmount}px)`
+          }}
+        />
+        {overlay}
       </div>
     );
   }
@@ -182,6 +237,8 @@ export function BackgroundEngine() {
       filter: activeTheme ? `${commonFilter} blur(${blurAmount}px)` : 'none',
       opacity,
       transition: 'opacity 0.4s ease, filter 0.4s ease, background 0.4s ease, background-image 0.4s ease',
-    }} />
+    }}>
+      {overlay}
+    </div>
   );
 }

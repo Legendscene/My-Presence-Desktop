@@ -198,14 +198,28 @@ export function PresenceEditor({ profile }: Props) {
     switch (key) {
       case 'basics':
         return (
-          <div className="editor-grid two">
-            <FormField label="Preset name">
-              <TextInput value={profile.name} onChange={(e) => patch('name', e.target.value)} placeholder="e.g. Gaming, Working" />
-            </FormField>
-            <FormField label="Shows up as">
-              <SelectInput value={profile.activityType} onChange={(value) => patch('activityType', value as ActivityType)} options={activityTypes.map((t) => ({ value: t, label: t }))} />
-            </FormField>
-          </div>
+          <>
+            <div className="editor-grid two">
+              <FormField label="Preset name">
+                <TextInput value={profile.name} onChange={(e) => patch('name', e.target.value)} placeholder="e.g. Gaming, Working" />
+              </FormField>
+              <FormField label="Shows up as">
+                <SelectInput value={profile.activityType} onChange={(value) => patch('activityType', value as ActivityType)} options={activityTypes.map((t) => ({ value: t, label: t }))} />
+              </FormField>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <FormField label="Custom Discord Application ID (Optional)">
+                <TextInput
+                  value={profile.applicationId ?? ''}
+                  onChange={(e) => patch('applicationId', e.target.value)}
+                  placeholder="Defaults to My Presence (1525516685963165747)"
+                />
+              </FormField>
+              <p className="editor-hint" style={{ marginTop: 4 }}>
+                <Lightbulb size={12} /> Leave empty to use the default app, or provide your custom Discord App ID to show a custom game or app title.
+              </p>
+            </div>
+          </>
         );
       case 'status':
         return (

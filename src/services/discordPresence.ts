@@ -182,14 +182,15 @@ export class DiscordPresenceService {
       return;
     }
 
-    // Users never provide an application ID — the app ALWAYS uses the one baked
-    // into config.ts. (We intentionally ignore any legacy profile.applicationId
-    // that may still be sitting in saved/seed data from older builds.)
-    const applicationId = BUNDLED_APPLICATION_ID.trim();
-    if (!hasBundledApplicationId()) {
+    // Use profile custom application ID if provided, otherwise fallback to bundled ID.
+    const customAppId = profile.applicationId?.trim();
+    const hasCustomAppId = customAppId && /^\d{8,20}$/.test(customAppId);
+    const applicationId = hasCustomAppId ? customAppId : BUNDLED_APPLICATION_ID.trim();
+
+    if (!applicationId || !/^\d{8,20}$/.test(applicationId)) {
       this.setState({
         status: 'error',
-        message: 'This build has no Discord application linked yet. Set BUNDLED_APPLICATION_ID in src/lib/config.ts.',
+        message: 'No valid Discord Application ID configured. Enter a valid Discord App ID or configure BUNDLED_APPLICATION_ID in src/lib/config.ts.',
         activeProfileId: profile.id
       });
       return;

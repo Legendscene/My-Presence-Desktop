@@ -60,6 +60,7 @@ function getIpcPath(id: number): string {
 export class DiscordRpcClient {
   private socket: net.Socket | null = null;
   private clientId = '';
+  private activeClientId = '';
   private connected = false;
   private connecting = false;
   private readBuffer = Buffer.alloc(0);
@@ -83,13 +84,17 @@ export class DiscordRpcClient {
    * Resolves once Discord dispatches READY.
    */
   async connect(clientId: string): Promise<void> {
-    this.clientId = clientId;
-
-    // Reuse an existing connection if we're already live for this client.
-    if (this.connected && this.socket) {
+    // Reuse an existing connection if we're already live for this exact client.
+    if (this.connected && this.socket && this.activeClientId === clientId) {
       return;
     }
 
+    // If connected for a different client ID, disconnect first before handshaking anew.
+    if (this.connected || this.socket) {
+      this.disconnect();
+    }
+
+    this.clientId = clientId;
     this.connecting = true;
     this.emit('connecting', 'Connecting to Discord…');
 
@@ -134,6 +139,7 @@ export class DiscordRpcClient {
 
     this.connected = true;
     this.connecting = false;
+    this.activeClientId = clientId;
     this.emit('connected', 'Connected to Discord');
   }
 
@@ -180,6 +186,7 @@ export class DiscordRpcClient {
     const wasConnected = this.connected || this.connecting;
     this.connected = false;
     this.connecting = false;
+    this.activeClientId = '';
     this.socket = null;
     this.readBuffer = Buffer.alloc(0);
 
@@ -289,6 +296,7 @@ export class DiscordRpcClient {
     const socket = this.socket;
     this.connected = false;
     this.connecting = false;
+    this.activeClientId = '';
     this.currentActivity = null;
     this.socket = null;
     this.readBuffer = Buffer.alloc(0);

@@ -70,6 +70,14 @@ export function ProfilesPanel() {
             <span className="profile-count">{profiles.length}</span>
             <button
               className="icon-button"
+              title="New profile (Ctrl+N)"
+              aria-label="Create new profile"
+              onClick={() => { createProfile(); setActiveTab('editor'); }}
+            >
+              <Plus size={15} />
+            </button>
+            <button
+              className="icon-button"
               title="Hide library (Ctrl+B)"
               aria-label="Hide library panel"
               onClick={toggleSidebar}

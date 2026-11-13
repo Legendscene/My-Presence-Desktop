@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" width="1000" height="620">
+  <defs>
+    <linearGradient id="winBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0c0f17" />
+      <stop offset="100%" stop-color="#141824" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c6cff" />
+      <stop offset="100%" stop-color="#6351f7" />
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#191e2e" />
+      <stop offset="100%" stop-color="#101422" />
+    </linearGradient>
+    <filter id="winShadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+  </defs>
+
+  <style>
+    .f { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  </style>
+
+  <!-- Main Window -->
+  <rect x="20" y="20" width="960" height="580" rx="14" fill="url(#winBg)" stroke="#262d42" stroke-width="1.5" filter="url(#winShadow)" />
+
+  <!-- Titlebar -->
+  <rect x="20" y="20" width="960" height="42" rx="14" fill="#0d111c" />
+  <rect x="20" y="48" width="960" height="14" fill="#0d111c" />
+  <line x1="20" y1="62" x2="980" y2="62" stroke="#1f2538" stroke-width="1" />
+
+  <!-- App Title & Icon -->
+  <circle cx="44" cy="41" r="10" fill="url(#accentGrad)" />
+  <text x="62" y="46" fill="#f1f5f9" font-size="13" font-weight="700" class="f">My Presence Studio</text>
+  <rect x="195" y="32" width="60" height="18" rx="4" fill="#1e2538" />
+  <text x="205" y="45" fill="#7c6cff" font-size="10" font-weight="700" class="f">DESKTOP</text>
+
+  <!-- Search / Quick Switcher in titlebar -->
+  <rect x="370" y="30" width="260" height="24" rx="6" fill="#141926" stroke="#242b40" stroke-width="1" />
+  <text x="382" y="46" fill="#64748b" font-size="11" class="f">🔍 Search or press ⌘K...</text>
+
+  <!-- Window controls -->
+  <circle cx="920" cy="41" r="5" fill="#334155" />
+  <circle cx="940" cy="41" r="5" fill="#334155" />
+  <circle cx="960" cy="41" r="5" fill="#ef4444" />
+
+  <!-- ================= LEFT SIDEBAR (Profiles) ================= -->
+  <rect x="20" y="62" width="220" height="538" fill="#0e121d" />
+  <line x1="240" y1="62" x2="240" y2="600" stroke="#1f2538" stroke-width="1" />
+
+  <!-- Sidebar Header -->
+  <text x="38" y="90" fill="#94a3b8" font-size="11" font-weight="700" letter-spacing="0.5" class="f">LIBRARY</text>
+  <rect x="190" y="78" width="34" height="20" rx="4" fill="#20273a" />
+  <text x="203" y="92" fill="#7c6cff" font-size="12" font-weight="700" class="f">+</text>
+
+  <!-- Profile List Items -->
+  <!-- Item 1 (Selected) -->
+  <rect x="30" y="104" width="200" height="52" rx="8" fill="#1a2033" stroke="#7c6cff" stroke-width="1" />
+  <circle cx="48" cy="130" r="12" fill="url(#accentGrad)" />
+  <text x="68" y="125" fill="#f8fafc" font-size="13" font-weight="600" class="f">Coding Session</text>
+  <text x="68" y="141" fill="#10b981" font-size="11" class="f">● Live • Playing</text>
+  <text x="210" y="128" fill="#f59e0b" font-size="12" class="f">★</text>
+
+  <!-- Item 2 -->
+  <rect x="30" y="162" width="200" height="52" rx="8" fill="#121624" />
+  <circle cx="48" cy="188" r="12" fill="#334155" />
+  <text x="68" y="183" fill="#cbd5e1" font-size="13" font-weight="500" class="f">Gaming (Minecraft)</text>
+  <text x="68" y="199" fill="#64748b" font-size="11" class="f">Idle • Playing</text>
+
+  <!-- Item 3 -->
+  <rect x="30" y="220" width="200" height="52" rx="8" fill="#121624" />
+  <circle cx="48" cy="246" r="12" fill="#334155" />
+  <text x="68" y="241" fill="#cbd5e1" font-size="13" font-weight="500" class="f">Lo-Fi &amp; Chill Beats</text>
+  <text x="68" y="257" fill="#64748b" font-size="11" class="f">Idle • Listening</text>
+
+  <!-- Item 4 -->
+  <rect x="30" y="278" width="200" height="52" rx="8" fill="#121624" />
+  <circle cx="48" cy="304" r="12" fill="#334155" />
+  <text x="68" y="299" fill="#cbd5e1" font-size="13" font-weight="500" class="f">Live Stream</text>
+  <text x="68" y="315" fill="#64748b" font-size="11" class="f">Idle • Streaming</text>
+
+  <!-- Navigation Bottom (Tabs) -->
+  <line x1="20" y1="535" x2="240" y2="535" stroke="#1f2538" stroke-width="1" />
+  <text x="40" y="562" fill="#94a3b8" font-size="12" class="f">⚙ Settings</text>
+  <text x="130" y="562" fill="#94a3b8" font-size="12" class="f">🎨 Themes</text>
+
+  <!-- ================= CENTER (Editor) ================= -->
+  <!-- Top Editor Bar -->
+  <g transform="translate(260, 80)">
+    <text x="0" y="16" fill="#f8fafc" font-size="18" font-weight="700" class="f">Coding Session</text>
+    <rect x="140" y="2" width="70" height="20" rx="4" fill="#065f46" />
+    <text x="148" y="16" fill="#34d399" font-size="10" font-weight="700" class="f">● ACTIVE</text>
+
+    <!-- Quick Actions -->
+    <rect x="310" y="0" width="80" height="26" rx="6" fill="#20273a" stroke="#2d374d" stroke-width="1" />
+    <text x="324" y="17" fill="#cbd5e1" font-size="11" font-weight="500" class="f">Duplicate</text>
+    <rect x="396" y="0" width="70" height="26" rx="6" fill="#ef4444" opacity="0.15" />
+    <text x="412" y="17" fill="#f87171" font-size="11" font-weight="500" class="f">Delete</text>
+  </g>
+
+  <!-- Section 1: The Basics -->
+  <g transform="translate(260, 130)">
+    <rect x="0" y="0" width="410" height="110" rx="8" fill="url(#cardGrad)" stroke="#222a3d" stroke-width="1" />
+    <text x="16" y="24" fill="#f1f5f9" font-size="12" font-weight="700" class="f">THE BASICS</text>
+    
+    <!-- Application ID -->
+    <text x="16" y="52" fill="#94a3b8" font-size="11" class="f">Discord Application ID</text>
+    <rect x="16" y="60" width="240" height="30" rx="5" fill="#0d111c" stroke="#232a3d" stroke-width="1" />
+    <text x="26" y="79" fill="#e2e8f0" font-size="11" class="f">123456789012345678</text>
+
+    <!-- Activity Type Dropdown -->
+    <text x="270" y="52" fill="#94a3b8" font-size="11" class="f">Activity Type</text>
+    <rect x="270" y="60" width="124" height="30" rx="5" fill="#0d111c" stroke="#232a3d" stroke-width="1" />
+    <text x="282" y="79" fill="#e2e8f0" font-size="11" class="f">Playing ▾</text>
+  </g>
+
+  <!-- Section 2: Status Text -->
+  <g transform="translate(260, 250)">
+    <rect x="0" y="0" width="410" height="120" rx="8" fill="url(#cardGrad)" stroke="#222a3d" stroke-width="1" />
+    <text x="16" y="24" fill="#f1f5f9" font-size="12" font-weight="700" class="f">STATUS TEXT</text>
+    
+    <!-- Details Field -->
+    <text x="16" y="50" fill="#94a3b8" font-size="11" class="f">Top Line (Details)</text>
+    <rect x="16" y="58" width="378" height="28" rx="5" fill="#0d111c" stroke="#232a3d" stroke-width="1" />
+    <text x="26" y="76" fill="#e2e8f0" font-size="11" class="f">Building My-Presence Desktop</text>
+
+    <!-- State Field -->
+    <text x="16" y="98" fill="#94a3b8" font-size="11" class="f">Bottom Line (State)</text>
+    <rect x="16" y="104" width="378" height="28" rx="5" fill="#0d111c" stroke="#232a3d" stroke-width="1" />
+    <text x="26" y="122" fill="#e2e8f0" font-size="11" class="f">TypeScript &amp; React 18</text>
+  </g>
+
+  <!-- Section 3: Artwork & Assets -->
+  <g transform="translate(260, 385)">
+    <rect x="0" y="0" width="410" height="185" rx="8" fill="url(#cardGrad)" stroke="#222a3d" stroke-width="1" />
+    <text x="16" y="24" fill="#f1f5f9" font-size="12" font-weight="700" class="f">ARTWORK &amp; MEDIA</text>
+    
+    <!-- Large and Small Upload Zones -->
+    <rect x="16" y="38" width="180" height="65" rx="6" fill="#0f1422" stroke="#2a334a" stroke-width="1" stroke-dasharray="4" />
+    <text x="56" y="75" fill="#7c6cff" font-size="11" font-weight="600" class="f">Large Artwork</text>
+
+    <rect x="214" y="38" width="180" height="65" rx="6" fill="#0f1422" stroke="#2a334a" stroke-width="1" stroke-dasharray="4" />
+    <text x="254" y="75" fill="#7c6cff" font-size="11" font-weight="600" class="f">Small Badge</text>
+
+    <!-- Quick Pick Strip -->
+    <text x="16" y="124" fill="#64748b" font-size="10" font-weight="700" letter-spacing="0.5" class="f">QUICK PICK FROM ASSET LIBRARY</text>
+    <g transform="translate(16, 132)">
+      <rect x="0" y="0" width="86" height="42" rx="5" fill="#161b2b" stroke="#252d42" stroke-width="1" />
+      <text x="8" y="24" fill="#cbd5e1" font-size="10" class="f">Logo</text>
+      <rect x="94" y="0" width="86" height="42" rx="5" fill="#161b2b" stroke="#252d42" stroke-width="1" />
+      <text x="102" y="24" fill="#cbd5e1" font-size="10" class="f">VSCode</text>
+      <rect x="188" y="0" width="86" height="42" rx="5" fill="#161b2b" stroke="#252d42" stroke-width="1" />
+      <text x="196" y="24" fill="#cbd5e1" font-size="10" class="f">Music</text>
+      <rect x="282" y="0" width="96" height="42" rx="5" fill="#161b2b" stroke="#252d42" stroke-width="1" />
+      <text x="290" y="24" fill="#7c6cff" font-size="10" class="f">+ Import</text>
+    </g>
+  </g>
+
+  <!-- ================= RIGHT COLUMN (Live Preview) ================= -->
+  <line x1="695" y1="62" x2="695" y2="600" stroke="#1f2538" stroke-width="1" />
+
+  <g transform="translate(710, 80)">
+    <text x="0" y="16" fill="#f8fafc" font-size="14" font-weight="700" class="f">LIVE DISCORD PREVIEW</text>
+
+    <!-- Go Live Big Toggle Button -->
+    <rect x="0" y="32" width="250" height="42" rx="8" fill="#10b981" />
+    <circle cx="95" cy="53" r="5" fill="#ffffff" />
+    <text x="110" y="58" fill="#ffffff" font-size="14" font-weight="700" class="f">LIVE NOW</text>
+
+    <!-- Mini Discord Card Preview -->
+    <g transform="translate(0, 95)">
+      <rect x="0" y="0" width="250" height="280" rx="12" fill="#18191c" stroke="#2b2d31" stroke-width="1.5" />
+      
+      <!-- Mini Banner -->
+      <path d="M 0 12 Q 0 0 12 0 L 238 0 Q 250 0 250 12 L 250 50 L 0 50 Z" fill="#5865F2" />
+      <circle cx="36" cy="50" r="22" fill="#18191c" />
+      <circle cx="36" cy="50" r="18" fill="#5865F2" />
+      <circle cx="50" cy="62" r="5" fill="#23a55a" />
+
+      <text x="64" y="66" fill="#ffffff" font-size="13" font-weight="700" class="f">YourName</text>
+      <text x="64" y="80" fill="#949ba4" font-size="10" class="f">Custom Presence</text>
+
+      <line x1="14" y1="92" x2="236" y2="92" stroke="#2b2d31" stroke-width="1" />
+
+      <!-- Presence Activity in Card -->
+      <text x="14" y="110" fill="#b5bac1" font-size="9" font-weight="800" class="f">PLAYING A GAME</text>
+
+      <g transform="translate(14, 118)">
+        <!-- Artwork -->
+        <rect x="0" y="0" width="56" height="56" rx="8" fill="url(#accentGrad)" />
+        <circle cx="48" cy="48" r="9" fill="#18191c" />
+        <circle cx="48" cy="48" r="7" fill="#23a55a" />
+
+        <text x="66" y="16" fill="#ffffff" font-size="12" font-weight="700" class="f">Coding Session</text>
+        <text x="66" y="30" fill="#dbdee1" font-size="10" class="f">Building My-Presence</text>
+        <text x="66" y="44" fill="#949ba4" font-size="9" class="f">TypeScript &amp; React</text>
+        <text x="66" y="56" fill="#949ba4" font-size="9" class="f">01:42:38 elapsed</text>
+      </g>
+
+      <!-- Buttons in Mini Card -->
+      <rect x="14" y="190" width="222" height="32" rx="4" fill="#2b2d31" />
+      <text x="125" y="210" text-anchor="middle" fill="#f2f3f5" font-size="11" font-weight="600" class="f">Visit Website ↗</text>
+
+      <rect x="14" y="230" width="222" height="32" rx="4" fill="#2b2d31" />
+      <text x="125" y="250" text-anchor="middle" fill="#f2f3f5" font-size="11" font-weight="600" class="f">View on GitHub ★</text>
+    </g>
+
+    <!-- Status feedback -->
+    <rect x="0" y="395" width="250" height="75" rx="8" fill="#101524" stroke="#1f283d" stroke-width="1" />
+    <text x="14" y="416" fill="#94a3b8" font-size="10" font-weight="700" class="f">GATEWAY &amp; IPC STATUS</text>
+    <text x="14" y="434" fill="#34d399" font-size="11" font-weight="600" class="f">● Connected to Discord</text>
+    <text x="14" y="452" fill="#64748b" font-size="10" class="f">Pipe: \\.\pipe\discord-ipc-0</text>
+  </g>
+</svg>

@@ -1,12 +1,12 @@
 <div align="center">
 
-  <img src="public/ic_app_logo.png" width="96" height="96" alt="My Presence Desktop Logo">
+  <img src="docs/images/logo.svg" width="128" height="128" alt="My Presence Desktop Logo">
 
   # My Presence (Desktop Studio)
 
   <p>
     <strong>Next-generation Discord Rich Presence Studio for Windows &amp; PC.</strong><br>
-    Craft, customize, and broadcast living Discord activities with real-time visual previews.
+    <em>Jo Discord detect nahi karta, wo hum detect karwate hain!</em>
   </p>
 
   <p>
@@ -20,6 +20,7 @@
   </p>
 
   <p>
+    <a href="#-the-core-difference">Why My Presence?</a> •
     <a href="#-quick-preview">Preview</a> •
     <a href="#-features">Features</a> •
     <a href="#-how-to-use-step-by-step">How to Use</a> •
@@ -33,9 +34,17 @@
 
 ---
 
+> [!IMPORTANT]
+> ### 💡 Why My Presence Desktop?
+> Discord natively detects Spotify and a handful of verified mainstream games. But what about **custom coding projects, browser streams, non-Steam games, video editors, 3D modeling, emulators, or personal activities**?
+> 
+> **My Presence gives you 100% control.** Broadcast rich presence for *any* application, game, or custom hobby with your own custom Discord Application ID, high-resolution artwork, real-time elapsed timers, and interactive action buttons!
+
+---
+
 ## 📸 Quick Preview
 
-### Application Studio & Live Preview
+### Actual Application Studio & Live Discord Card Preview
 <div align="center">
   <img src="docs/images/desktop-preview.svg" width="95%" alt="My Presence Desktop Studio Preview">
 </div>

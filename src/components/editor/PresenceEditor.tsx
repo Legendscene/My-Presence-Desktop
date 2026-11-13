@@ -24,6 +24,8 @@ const SECTION_CONFIG = [
 
 export function PresenceEditor({ profile }: Props) {
   const updateProfile = useAppStore((state) => state.updateProfile);
+  const assets = useAppStore((state) => state.assets);
+  const setActiveTab = useAppStore((state) => state.setActiveTab);
   const [uploading, setUploading] = useState<ImageSlot | null>(null);
   const [editingSlot, setEditingSlot] = useState<ImageSlot | null>(null);
   const [uploadError, setUploadError] = useState('');
@@ -241,6 +243,94 @@ export function PresenceEditor({ profile }: Props) {
             </div>
             {uploadError && <p className="editor-error">{uploadError}</p>}
             <p className="editor-hint"><Lightbulb size={12} /> Paste a Giphy, Tenor, Pinterest, or direct image link</p>
+            {assets.length > 0 && (
+              <div style={{ marginTop: 10, marginBottom: 12, padding: '10px 12px', background: 'var(--bg-elevated)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Quick Pick from Asset Library ({assets.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('assets')}
+                    style={{ fontSize: 11, color: 'var(--accent-primary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                  >
+                    Manage Library &rarr;
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                  {assets.map((asset) => (
+                    <div
+                      key={asset.id}
+                      style={{
+                        flexShrink: 0,
+                        width: 96,
+                        padding: 6,
+                        borderRadius: 8,
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '100%',
+                          height: 52,
+                          borderRadius: 6,
+                          overflow: 'hidden',
+                          background: asset.accent || '#333',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {asset.url ? (
+                          <img src={asset.url} alt={asset.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>{asset.kind}</span>
+                        )}
+                      </div>
+                      <span
+                        title={asset.name}
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 500,
+                          width: '100%',
+                          textAlign: 'center',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {asset.name}
+                      </span>
+                      <div style={{ display: 'flex', gap: 4, width: '100%' }}>
+                        <button
+                          type="button"
+                          className="ui-button ui-button--secondary"
+                          style={{ flex: 1, padding: '2px 0', fontSize: 9, height: 20 }}
+                          title={`Set as Large Artwork: ${asset.name}`}
+                          onClick={() => setImage('largeImage', asset.url || asset.name)}
+                        >
+                          Large
+                        </button>
+                        <button
+                          type="button"
+                          className="ui-button ui-button--secondary"
+                          style={{ flex: 1, padding: '2px 0', fontSize: 9, height: 20 }}
+                          title={`Set as Small Artwork: ${asset.name}`}
+                          onClick={() => setImage('smallImage', asset.url || asset.name)}
+                        >
+                          Small
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="editor-grid two" style={{ marginTop: 6 }}>
               <FormField label="Large link">
                 <TextInput value={profile.assets.largeImage} onChange={(e) => setImage('largeImage', e.target.value)} onBlur={() => void resolveImageLink('largeImage')} placeholder="Upload or paste link…" />

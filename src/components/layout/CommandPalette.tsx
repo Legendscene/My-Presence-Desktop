@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, CopyPlus, Image, Paintbrush, Play, Search, Settings2, Trash2, Wifi, WifiOff } from 'lucide-react';
+import { Activity, CopyPlus, Image, Paintbrush, Play, Search, Settings2, Trash2, Wifi, WifiOff, Star, Moon, Sun, Monitor, UserCheck } from 'lucide-react';
+import { useAppStore } from '../../lib/store';
 
 interface Command {
   id: string;
@@ -12,7 +13,7 @@ interface Command {
   group: string;
 }
 
-const commands: Command[] = [
+const baseCommands: Command[] = [
   { id: 'create', label: 'Create Profile', icon: CopyPlus, action: 'create-profile', group: 'Profiles', shortcut: '⌘N' },
   { id: 'duplicate', label: 'Duplicate Profile', icon: CopyPlus, action: 'duplicate-profile', group: 'Profiles' },
   { id: 'delete', label: 'Delete Profile', icon: Trash2, action: 'delete-profile', group: 'Profiles' },
@@ -37,16 +38,52 @@ export function CommandPalette({ open, onClose, onAction }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  const profiles = useAppStore((state) => state.profiles);
+  const selectedProfileId = useAppStore((state) => state.selectedProfileId);
+  const activeProfile = useMemo(() => profiles.find((p) => p.id === selectedProfileId), [profiles, selectedProfileId]);
+
+  const allCommands = useMemo<Command[]>(() => {
+    const list: Command[] = [
+      ...baseCommands,
+      {
+        id: 'toggle-fav',
+        label: activeProfile?.favorite ? 'Remove from Favorites' : 'Add to Favorites',
+        description: activeProfile ? `Mark "${activeProfile.name}" as favorite` : undefined,
+        icon: Star,
+        action: 'toggle-favorite',
+        group: 'Profiles',
+        shortcut: '⌘D',
+      },
+      { id: 'theme-system', label: 'Appearance: System', icon: Monitor, action: 'theme:system', group: 'Appearance' },
+      { id: 'theme-dark', label: 'Appearance: Dark Mode', icon: Moon, action: 'theme:dark', group: 'Appearance' },
+      { id: 'theme-light', label: 'Appearance: Light Mode', icon: Sun, action: 'theme:light', group: 'Appearance' },
+      { id: 'theme-oled', label: 'Appearance: OLED Black', icon: Moon, action: 'theme:oled', group: 'Appearance' },
+    ];
+
+    profiles.forEach((p) => {
+      list.push({
+        id: `profile-${p.id}`,
+        label: p.name,
+        description: `${p.id === selectedProfileId ? 'Active Profile • ' : ''}${p.status === 'live' ? '● Live' : 'Idle'}${p.favorite ? ' ★' : ''} • ${p.details || p.activityType}`,
+        icon: UserCheck,
+        action: `select-profile:${p.id}`,
+        group: 'Switch Profile',
+      });
+    });
+
+    return list;
+  }, [profiles, selectedProfileId, activeProfile]);
+
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
-    if (!q) return commands;
-    return commands.filter(
+    if (!q) return allCommands;
+    return allCommands.filter(
       (cmd) =>
         cmd.label.toLowerCase().includes(q) ||
         cmd.description?.toLowerCase().includes(q) ||
         cmd.group.toLowerCase().includes(q)
     );
-  }, [query]);
+  }, [query, allCommands]);
 
   useEffect(() => {
     if (open) {

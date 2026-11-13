@@ -45,6 +45,10 @@ export function Shell({ children }: PropsWithChildren) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setPaletteOpen((o) => !o);
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        const state = useAppStore.getState();
+        if (state.selectedProfileId) state.toggleFavorite(state.selectedProfileId);
       }
     };
     window.addEventListener('keydown', down);
@@ -123,6 +127,18 @@ export function Shell({ children }: PropsWithChildren) {
     }
     else if (action === 'toggle-background') {
       setActiveTab('background');
+    }
+    else if (action.startsWith('select-profile:')) {
+      const pid = action.replace('select-profile:', '');
+      state.selectProfile(pid);
+      setActiveTab('editor');
+    }
+    else if (action === 'toggle-favorite') {
+      if (state.selectedProfileId) state.toggleFavorite(state.selectedProfileId);
+    }
+    else if (action.startsWith('theme:')) {
+      const appearance = action.replace('theme:', '') as 'dark' | 'light' | 'oled' | 'system';
+      state.updateSettings((s) => ({ ...s, appearance }));
     }
     else if (action === 'import-profile') {
       const bridge = window.myPresenceDesktop;
